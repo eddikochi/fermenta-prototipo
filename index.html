@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Fermenta · pão e cozinha (protótipo)</title>
+<meta name="description" content="Protótipo conceitual. Da cozinha do DC Navegantes ao almoço na 24 de Outubro e à casa nova na Praça Otávio Rocha, controlado pelo scroll.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,100..600,0..100&family=IBM+Plex+Mono:wght@300;400&family=Jost:wght@300;400&display=swap">
+<style>
+/* paleta e tipos do site v3 da Fermenta */
+:root {
+  /* cores do logo: cacau do letreiro, argila, areia e blush; bolhas em argila, vinho e mostarda suaves */
+  --canvas: #1a110c; --texto: #f4e9df; --texto-2: #e0cfc2; --laranja: #c27a55; --vermelho: #a4493d; --mostarda: #c4a05a; --rosa: #d1af9a; --cacau: #724337; --blush: #f2e1d7;
+  --vidro: rgba(26,17,12,.66); --linha: rgba(242,225,215,.14);
+  --f-titulo: 'Fraunces', Georgia, serif; --f-texto: 'Jost', system-ui, sans-serif; --f-rotulo: 'IBM Plex Mono', ui-monospace, monospace;
+  --ease: cubic-bezier(.39,0,.05,.99); --mola: cubic-bezier(.34,1.56,.64,1);
+  --g: clamp(20px, 6vw, 96px);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--canvas); color: var(--texto); font: 300 16.5px/1.65 var(--f-texto); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+.filme { position: relative; }
+.ancora { position: absolute; left: 0; width: 1px; height: 1px; }
+.palco { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; background: #000; --mx: 0; --my: 0; }
+.palco video, .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.poster { background: center / cover no-repeat; transition: opacity .6s var(--ease); }
+.palco.pronto .poster { opacity: 0; }
+.sombra { position: absolute; inset: 0; pointer-events: none; opacity: var(--s, 0);
+  background: radial-gradient(70% 90% at 12% 55%, rgba(14,9,6,.72) 0%, rgba(14,9,6,0) 70%), linear-gradient(90deg, rgba(14,9,6,.78) 0%, rgba(14,9,6,.46) 38%, rgba(14,9,6,0) 64%), linear-gradient(180deg, rgba(14,9,6,.5) 0%, rgba(14,9,6,0) 20%, rgba(14,9,6,0) 76%, rgba(14,9,6,.55) 100%); }
+.sombra-dir { position: absolute; inset: 0; pointer-events: none; opacity: var(--s2, 0); background: linear-gradient(270deg, rgba(14,9,6,.74) 0%, rgba(14,9,6,.42) 34%, rgba(14,9,6,0) 58%); }
+.corte { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .35s var(--ease); z-index: 5; }
+.corte.on { opacity: 1; }
+
+/* ---------- topo: menu do site ---------- */
+.topo { position: fixed; left: 0; right: 0; top: 0; z-index: 40; display: flex; align-items: center; gap: 26px; padding: 16px var(--g) 22px; background: linear-gradient(180deg, rgba(14,9,6,.92), rgba(14,9,6,.6) 55%, rgba(14,9,6,0)); }
+.marca { display: grid; text-decoration: none; line-height: 1; margin-right: auto; }
+.marca b { font: 230 19px/1 var(--f-titulo); letter-spacing: .34em; color: var(--blush); }
+.marca small { font: 400 11px/1 var(--f-texto); letter-spacing: .22em; color: var(--rosa); margin-top: 6px; }
+.nav { display: flex; gap: 22px; }
+.nav a, .menu-lista a { font: 400 11px/1 var(--f-rotulo); letter-spacing: .1em; text-transform: uppercase; text-decoration: none; color: rgba(242,225,215,.9); text-shadow: 0 1px 10px rgba(10,6,4,.8); padding: 8px 0; position: relative; }
+.nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 1px; background: var(--rosa); transform: scaleX(0); transform-origin: left; transition: transform .4s var(--ease); }
+.nav a:hover, .nav a.atual { color: #fff8f2; }
+.nav a:hover::after, .nav a.atual::after { transform: none; }
+.btn { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 20px; border-radius: 999px; font: 400 11.5px/1 var(--f-rotulo); letter-spacing: .12em; text-transform: uppercase; text-decoration: none; border: 1px solid rgba(242,225,215,.32); color: var(--blush); background: rgba(26,17,12,.4); backdrop-filter: blur(8px); cursor: pointer; transition: background .3s, border-color .3s, transform .3s var(--mola); }
+.btn:hover { background: rgba(242,225,215,.1); border-color: rgba(242,225,215,.55); transform: translateY(-1px); }
+.btn.cheio { background: rgba(176,116,91,.2); border-color: rgba(209,175,154,.6); color: var(--blush); }
+.btn.cheio:hover { background: rgba(176,116,91,.34); }
+.btn.cheio svg { stroke: var(--rosa); }
+.btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+.menu-btn { display: none; }
+.menu-lista { display: none; }
+@media (max-width: 960px) {
+  .nav { display: none; }
+  .menu-btn { display: inline-flex; padding: 0 16px; }
+  .topo .btn.cheio { padding: 0 14px; }
+  .menu-lista { position: fixed; inset: 0; z-index: 39; display: grid; align-content: center; gap: 6px; padding: 80px var(--g); background: rgba(20,12,8,.96); opacity: 0; visibility: hidden; transition: opacity .35s var(--ease), visibility 0s .35s; }
+  .menu-aberto .menu-lista { opacity: 1; visibility: visible; transition: opacity .35s var(--ease); }
+  .menu-lista a { font: 230 34px/1.25 var(--f-titulo); letter-spacing: 0; text-transform: none; color: var(--texto); }
+}
+@media (max-width: 420px) { .topo { gap: 10px; } .topo .btn.cheio span { display: none; } }
+
+/* ---------- batidas: aparecem quando o vídeo para ---------- */
+.batida { position: absolute; inset: 0; opacity: var(--o, 0); pointer-events: none; }
+.txt { position: absolute; left: var(--g); top: 50%; width: min(560px, 44vw); transform: translate(var(--x, 0px), calc(-50% + var(--y, 18px))); text-shadow: 0 1px 2px rgba(10,6,4,.45), 0 6px 34px rgba(10,6,4,.7); }
+.rotulo { display: block; font: 300 11px/1.4 var(--f-rotulo); letter-spacing: .14em; text-transform: uppercase; color: var(--rosa); margin-bottom: 16px; }
+.txt h1, .txt h2 { font: 230 clamp(26px, 3vw, 42px)/1.14 var(--f-titulo); font-variation-settings: 'SOFT' 100; margin: 0; letter-spacing: -.01em; }
+.txt h1 { font-size: clamp(32px, 3.8vw, 54px); }
+.txt p { margin: 16px 0 0; color: var(--texto-2); font-size: clamp(15px, 1.2vw, 17px); font-weight: 300; max-width: 46ch; }
+.confirmar { font: 400 .78em var(--f-rotulo); color: var(--mostarda); white-space: nowrap; text-shadow: none; }
+/* títulos entram palavra por palavra, de baixo, com o peso subindo */
+.w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .08em; margin-bottom: -.08em; }
+.w > span { display: inline-block; transform: translateY(105%); font-variation-settings: 'SOFT' 100, 'wght' 180; transition: transform .9s var(--ease), font-variation-settings 1.2s var(--ease); transition-delay: calc(var(--i) * 55ms); }
+.viva .w > span { transform: none; font-variation-settings: 'SOFT' 100, 'wght' 230; }
+.carregando .w > span { transform: translateY(105%) !important; transition: none !important; }
+/* fichas de informação: entram em cascata */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; padding: 0; list-style: none; }
+.chips li { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: var(--vidro); backdrop-filter: blur(10px); border: 1px solid var(--linha); font: 300 11px/1.2 var(--f-rotulo); letter-spacing: .04em; color: var(--texto); text-shadow: none; opacity: 0; transform: translateY(12px) scale(.96); }
+.chips li svg { width: 15px; height: 15px; stroke: var(--rosa); fill: none; stroke-width: 1.3; flex: none; }
+.chips li b { font-weight: 400; color: var(--rosa); }
+.viva .chips li { animation: entra .7s var(--mola) forwards; animation-delay: calc(400ms + var(--i) * 90ms); }
+.acoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; opacity: 0; transform: translateY(10px); transition: opacity .5s var(--ease) .7s, transform .5s var(--ease) .7s; }
+.viva .acoes { opacity: 1; transform: none; pointer-events: auto; }
+.agora { display: inline-flex; align-items: center; gap: 8px; }
+.agora::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--cor, #6fbf73); box-shadow: 0 0 0 0 var(--cor, #6fbf73); animation: pulsa 2s infinite; }
+@keyframes pulsa { 70% { box-shadow: 0 0 0 7px rgba(0,0,0,0); } }
+@keyframes entra { to { opacity: 1; transform: none; } }
+
+/* fotos reais e cartões em camadas: profundidade pelo scroll (--f) e pelo mouse (--mx, --my) */
+.camada { position: absolute; transform: translate3d(calc(var(--mx) * var(--d) * 22px), calc((.5 - var(--f, .5)) * var(--d) * 18vh + var(--my) * var(--d) * 14px), 0) rotate(var(--r, 0deg)); transition: transform .6s var(--ease); }
+.foto { border-radius: 14px; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,.45); border: 1px solid var(--linha); }
+.foto img { display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(1.12); transition: transform 1.4s var(--ease); }
+.foto { clip-path: inset(100% 0 0 0 round 14px); transition: transform .6s var(--ease), clip-path 1.1s var(--ease); }
+.viva .foto { clip-path: inset(0 0 0 0 round 14px); }
+.viva .foto img { transform: scale(1); }
+.foto:nth-child(2) { transition-delay: 0s, .18s; }
+.foto figcaption { position: absolute; left: 10px; bottom: 10px; font: 400 10px/1.2 var(--f-rotulo); letter-spacing: .06em; text-transform: uppercase; background: rgba(28,18,12,.7); padding: 6px 8px; border-radius: 6px; }
+
+
+/* listas editoriais (à tarde, eventos): numeradas, filetes que se desenham, sem flutuar */
+.lista { position: absolute; right: var(--g); top: 50%; transform: translateY(calc(-50% + var(--y, 18px))); width: min(460px, 37vw); padding: 24px 28px 6px; border-radius: 6px; background: linear-gradient(180deg, rgba(18,12,8,.82), rgba(18,12,8,.7)); backdrop-filter: blur(18px) saturate(.85); border: 1px solid var(--linha); box-shadow: 0 40px 80px rgba(8,5,3,.35); }
+.lista ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(242,225,215,.22); }
+.lista li { position: relative; display: grid; grid-template-columns: 38px 1fr; gap: 4px 14px; padding: 20px 0 18px; opacity: 0; transform: translateY(14px); }
+.lista li:last-child::after { display: none; }
+.lista li::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: rgba(242,225,215,.22); transform: scaleX(0); transform-origin: left; }
+.lista .n { font: 400 11px/1.9 var(--f-rotulo); letter-spacing: .1em; color: var(--rosa); }
+.lista b { display: block; font: 230 clamp(18px, 1.55vw, 22px)/1.22 var(--f-titulo); font-variation-settings: 'SOFT' 100; }
+.lista p { margin: 6px 0 0; font-size: 14.5px; font-weight: 300; line-height: 1.5; color: var(--texto-2); }
+.lista small { grid-column: 2; margin-top: 8px; font: 400 10.5px/1.3 var(--f-rotulo); letter-spacing: .12em; text-transform: uppercase; color: var(--rosa); opacity: .85; }
+.viva .lista li { animation: entra .9s var(--ease) forwards; animation-delay: calc(450ms + var(--i) * 140ms); }
+.viva .lista li::after { animation: cresce-x 1.1s var(--ease) forwards; animation-delay: calc(650ms + var(--i) * 140ms); }
+@keyframes cresce-x { to { transform: scaleX(1); } }
+
+
+/* carrossel de fotos do DC: uma foto, depois a outra, no mesmo lugar, conduzido pelo scroll (--f) */
+.dc-fotos { position: absolute; right: calc(var(--g) + 4vw); top: 50%; width: min(23vw, 330px); aspect-ratio: 3 / 4; transform: translateY(-50%); --p: clamp(0, calc((var(--f, 0) - .42) / .2), 1); }
+.dc-foto { position: absolute; inset: 0; margin: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--linha); box-shadow: 0 30px 70px rgba(8,5,3,.5); background: #1a110c; }
+.dc-foto img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.dc-foto figcaption { position: absolute; left: 12px; bottom: 12px; font: 300 10px/1.2 var(--f-rotulo); letter-spacing: .1em; text-transform: uppercase; color: var(--blush); background: rgba(18,12,8,.72); padding: 6px 9px; border-radius: 4px; }
+.dc-foto.um { clip-path: inset(100% 0 0 0 round 10px); transition: clip-path 1.1s var(--ease); transform: translateX(calc(var(--p) * -34%)) scale(calc(1 - var(--p) * .12)) rotate(calc(var(--p) * -4deg)); opacity: calc(1 - var(--p) * .75); filter: brightness(calc(1 - var(--p) * .45)); }
+.viva .dc-foto.um { clip-path: inset(0 0 0 0 round 10px); }
+.viva .dc-foto.um img { transform: scale(1); }
+.dc-foto.um img { transform: scale(1.12); transition: transform 1.4s var(--ease); }
+.dc-foto.dois { transform: translateX(calc((1 - var(--p)) * 120%)) rotate(calc((1 - var(--p)) * 7deg)); opacity: clamp(0, calc(var(--p) * 2.5), 1); z-index: 1; }
+.dc-foto.dois img { transform: scale(calc(1.15 - var(--p) * .15)); }
+.dc-conta { position: absolute; left: 0; top: calc(100% + 16px); display: flex; align-items: center; gap: 10px; font: 300 11px/1 var(--f-rotulo); letter-spacing: .12em; color: var(--texto-2); }
+.dc-conta b { font-weight: 300; color: var(--blush); }
+.dc-conta .c1 { opacity: calc(1 - var(--p)); } .dc-conta .c2 { position: absolute; left: 0; opacity: var(--p); }
+.dc-conta i { width: 64px; height: 1px; background: rgba(242,225,215,.25); position: relative; margin-left: 14px; }
+.dc-conta i::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: calc(50% + var(--p) * 50%); background: var(--rosa); }
+
+/* ficha técnica do túnel */
+.ficha .txt { width: min(640px, 50vw); text-shadow: none; }
+.ficha .painel { background: rgba(28,18,12,.62); backdrop-filter: blur(12px); border: 1px dashed rgba(246,238,228,.35); border-radius: 20px; padding: 22px 24px; transform: translateY(-46px) rotate(-2.5deg); opacity: 0; }
+.ficha.viva .painel { animation: pousa 1.1s var(--mola) .25s forwards; }
+@keyframes pousa { to { transform: none; opacity: 1; } }
+.ficha h2 { font-size: clamp(22px, 2.2vw, 32px); margin-bottom: 18px; }
+.passos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 14px 0 0; list-style: none; border-top: 1px solid rgba(246,238,228,.15); }
+.passos li { display: grid; grid-template-columns: 28px 1fr; gap: 2px 10px; align-items: center; opacity: 0; transform: translateY(10px); }
+.passos svg { width: 28px; height: 28px; grid-row: span 2; stroke: var(--rosa); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.passos b { font: 230 18px/1.1 var(--f-titulo); }
+.passos small { font-size: 13px; color: var(--texto-2); line-height: 1.25; }
+.camadas { display: inline-flex; gap: 2px; margin-left: 6px; vertical-align: middle; }
+.camadas i { width: 3px; height: 14px; background: var(--mostarda); border-radius: 2px; transform: scaleY(0); transform-origin: bottom; }
+.selo { margin: 16px 0 0; font: 400 11.5px/1.4 var(--f-rotulo); letter-spacing: .04em; color: var(--texto-2); opacity: 0; }
+.ficha.viva .passos li, .ficha.viva .selo { animation: entra .7s var(--ease) forwards; animation-delay: calc(700ms + var(--i) * 110ms); }
+.ficha.viva .camadas i { animation: cresce .5s var(--ease) forwards; animation-delay: calc(1400ms + var(--c) * 60ms); }
+@keyframes cresce { to { transform: scaleY(1); } }
+/* casca caindo dentro do túnel (código) */
+.flocos { position: absolute; inset: 0; pointer-events: none; opacity: var(--fl, 0); transition: opacity .6s var(--ease); }
+.flocos i { position: absolute; top: -12vh; left: var(--x); width: var(--w); height: calc(var(--w) * .55); background: linear-gradient(135deg, #f6c27a, #c5671f 70%, #8d3c12); border-radius: 40% 60% 35% 65% / 60% 40% 60% 40%; opacity: .9; filter: blur(var(--b)); animation: cai var(--t) linear var(--atraso) infinite; animation-play-state: paused; }
+.flocos.on i { animation-play-state: running; }
+@keyframes cai { to { transform: translate(var(--dx), 125vh) rotate(var(--giro)); } }
+
+/* ---------- restaurante: almoço, lettering e carrossel ---------- */
+.rest { position: absolute; inset: 0; pointer-events: none; visibility: hidden; }
+.rest.on { visibility: visible; }
+.veu { position: absolute; inset: 0; background: rgba(28,18,12,var(--veu, 0)); }
+.rest-rotulo { position: absolute; left: var(--g); top: calc(50% - clamp(70px, 9vw, 150px)); opacity: var(--o, 0); margin: 0; }
+.grande { position: absolute; left: 0; top: 50%; margin: 0; transform: translate(var(--gx, 0px), -50%); white-space: nowrap; font: 230 clamp(60px, 9vw, 156px)/.95 var(--f-titulo); letter-spacing: -.025em; color: var(--blush); opacity: var(--go, 1); text-shadow: 0 0 80px rgba(255,214,170,.22), 0 6px 40px rgba(10,6,4,.6); }
+.grande .pal { display: inline-block; white-space: nowrap; } .grande .esp { display: inline; }
+.grande .pal span { display: inline-block; --c: clamp(0, calc(var(--k, 0) * 1.9 - var(--i) * .035), 1); opacity: var(--c); transform: translateY(calc((1 - var(--c)) * 55%)); filter: blur(calc((1 - var(--c)) * 8px)); font-variation-settings: 'SOFT' 100, 'wght' calc(150 + var(--c) * 110); }
+.moldura { position: absolute; left: 50%; top: 50%; width: min(34vw, 420px); aspect-ratio: 3 / 4; transform: translate(-50%, -50%) scale(calc(1.3 - var(--mo, 0) * .3)); border: 1px dashed rgba(246,238,228,.75); opacity: var(--mo, 0); backdrop-filter: blur(14px); }
+.moldura::after { content: ""; position: absolute; right: 14px; top: 14px; width: 9px; height: 9px; border-radius: 50%; background: var(--texto); }
+.moldura::before { content: "almoço · 24 de outubro"; position: absolute; left: 0; top: -26px; font: 400 10.5px var(--f-rotulo); letter-spacing: .1em; text-transform: uppercase; color: var(--texto-2); }
+.trilho { position: absolute; left: 50%; top: 50%; display: flex; gap: 18px; align-items: center; transform: translate(calc(var(--tx, 0px) - 50%), -50%); opacity: var(--to, 0); }
+.card { flex: 0 0 auto; width: min(22vw, 260px); aspect-ratio: 3 / 4; background: center / cover no-repeat; filter: brightness(.55) saturate(.8); position: relative; border-radius: 4px;
+  /* entrada: os cards cruzam a tela vindo da direita, espalhados e inclinados, e se juntam no trilho */
+  transform: translateX(calc((1 - var(--en, 1)) * (100vw + var(--i) * 22vw))) rotate(calc((1 - var(--en, 1)) * (-9deg + var(--i) * 2deg))) scale(.8); transition: filter .4s var(--ease), width .4s var(--ease); }
+.card.foco { width: calc(min(34vw, 420px) - 14px); transform: translateX(calc((1 - var(--en, 1)) * 100vw)) rotate(calc((1 - var(--en, 1)) * -9deg)); filter: none; }
+.card span { position: absolute; left: 12px; right: 12px; bottom: 12px; font: 400 11px/1.3 var(--f-rotulo); letter-spacing: .06em; text-transform: uppercase; color: var(--texto); background: rgba(28,18,12,.7); padding: 8px 10px; opacity: 0; transition: opacity .3s; }
+.card.foco span { opacity: 1; }
+.rest::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: var(--mo, 0); background: linear-gradient(90deg, rgba(14,9,6,.9) 0%, rgba(14,9,6,.72) 24%, rgba(14,9,6,0) 40%); }
+.rest-legenda { z-index: 3; position: absolute; left: var(--g); top: 50%; transform: translateY(-50%); width: min(25vw, 330px); opacity: var(--mo, 0); text-shadow: 0 4px 24px rgba(10,6,4,.7); }
+.rest-legenda b { display: block; font: 230 clamp(19px, 1.6vw, 24px)/1.3 var(--f-titulo); }
+.rest-legenda p { margin: 10px 0 18px; color: var(--texto-2); font-size: 15px; font-weight: 300; }
+.rest-legenda small { font: 400 10.5px var(--f-rotulo); letter-spacing: .1em; color: var(--rosa); text-transform: uppercase; }
+.preto { position: absolute; inset: 0; z-index: 4; background: #000; opacity: var(--po, 0); }
+
+/* ---------- linha da expansão (forno → praça) ---------- */
+.linha-casas { position: absolute; right: var(--g); top: 50%; transform: translateY(-50%); width: min(420px, 36vw); display: grid; gap: 0; }
+.linha-casas li { list-style: none; position: relative; padding: 0 0 26px 34px; opacity: 0; transform: translateX(16px); }
+.linha-casas li::before { content: ""; position: absolute; left: 6px; top: 6px; width: 13px; height: 13px; border-radius: 50%; background: var(--cor); box-shadow: 0 0 0 5px rgba(28,18,12,.6); }
+.linha-casas li::after { content: ""; position: absolute; left: 12px; top: 22px; bottom: 0; width: 1px; background: rgba(246,238,228,.35); transform: scaleY(0); transform-origin: top; }
+.linha-casas li:last-child::after { display: none; }
+.linha-casas b { display: block; font: 230 22px/1.1 var(--f-titulo); text-shadow: 0 2px 14px rgba(0,0,0,.6); }
+.linha-casas span { display: block; margin-top: 4px; font: 400 11.5px/1.4 var(--f-rotulo); letter-spacing: .05em; text-transform: uppercase; color: var(--texto-2); }
+.linha-casas .breve::before { animation: pulsa 2s infinite; --cor: var(--mostarda); }
+.viva .linha-casas li { animation: entra .8s var(--ease) forwards; animation-delay: calc(500ms + var(--i) * 260ms); }
+.viva .linha-casas li::after { animation: cresce .6s var(--ease) forwards; animation-delay: calc(800ms + var(--i) * 260ms); }
+
+/* ---------- fechamento: ache sua sede ---------- */
+.fim { position: absolute; inset: 0; opacity: var(--o, 0); pointer-events: none; }
+.fim.ativo { pointer-events: auto; }
+.fim .grade { position: absolute; left: var(--g); right: var(--g); top: 92px; bottom: max(64px, 8vh); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(20px, 4vw, 56px); align-items: end; transform: translateY(var(--y, 24px)); }
+.fim h2 { font: 230 clamp(28px, 3.3vw, 46px)/1.1 var(--f-titulo); font-variation-settings: 'SOFT' 80; margin: 0 0 8px; text-shadow: 0 2px 22px rgba(0,0,0,.6); }
+.fim .sub { margin: 0 0 18px; color: var(--texto-2); text-shadow: 0 2px 14px rgba(0,0,0,.6); }
+.casas { display: grid; gap: 10px; }
+.casa { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 14px; text-decoration: none; background: rgba(28,18,12,.74); backdrop-filter: blur(10px); border: 1px solid var(--linha); border-radius: 16px; padding: 14px 18px; transition: border-color .3s, transform .4s var(--mola), background .3s; opacity: 0; transform: translateY(14px); }
+.viva .casa { animation: entra .7s var(--mola) forwards; animation-delay: calc(300ms + var(--i) * 110ms); }
+.casa:hover, .casa.alvo { border-color: var(--cor); background: rgba(40,26,18,.86); }
+.casa b { display: flex; align-items: center; gap: 10px; font: 230 21px/1.1 var(--f-titulo); }
+.casa b::before { content: ""; width: 11px; height: 11px; border-radius: 50%; background: var(--cor); }
+.casa > span { grid-column: 1; font-size: 14.5px; color: var(--texto-2); }
+.casa em { grid-row: 1 / span 2; grid-column: 2; font: 400 11px/1 var(--f-rotulo); letter-spacing: .08em; text-transform: uppercase; font-style: normal; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.casa em svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.6; transition: transform .4s var(--mola); }
+.casa:hover em svg { transform: translate(3px, -3px); }
+.mapa { position: relative; background: rgba(28,18,12,.7); backdrop-filter: blur(12px); border: 1px solid var(--linha); border-radius: 20px; overflow: hidden; aspect-ratio: 4 / 3; max-height: calc(100dvh - 160px); justify-self: end; width: 100%; }
+.mapa svg { display: block; width: 100%; height: 100%; }
+.mapa .rio { fill: rgba(120,150,170,.18); stroke: rgba(160,190,210,.35); stroke-width: 1; }
+.mapa .rua { stroke: rgba(246,238,228,.13); stroke-width: 1; fill: none; stroke-dasharray: 600; stroke-dashoffset: 600; }
+.viva .mapa .rua { animation: traca 2.2s var(--ease) forwards; animation-delay: calc(var(--i) * 60ms); }
+.mapa .rota { stroke: var(--laranja); stroke-width: 1.6; fill: none; stroke-dasharray: 5 6; opacity: 0; }
+.viva .mapa .rota { animation: aparece .6s var(--ease) 1.2s forwards, anda 1.6s linear infinite; }
+@keyframes anda { to { stroke-dashoffset: -22; } }
+.pino { cursor: pointer; }
+.pino circle.halo { fill: var(--cor); opacity: .22; transform-box: fill-box; transform-origin: center; animation: halo 2.4s infinite; }
+.pino circle.ponto { fill: var(--cor); stroke: #1c120c; stroke-width: 2; transform-box: fill-box; transform-origin: center; transform: scale(0); transition: transform .4s var(--mola); }
+.viva .pino circle.ponto { transform: scale(1); transition-delay: calc(900ms + var(--i) * 150ms); }
+.pino.alvo circle.ponto, .pino:hover circle.ponto { transform: scale(1.45); transition-delay: 0s; }
+.pino text { font: 400 9px var(--f-rotulo); letter-spacing: .08em; text-transform: uppercase; fill: var(--texto); paint-order: stroke; stroke: rgba(28,18,12,.85); stroke-width: 3px; }
+@keyframes halo { 0% { transform: scale(.6); opacity: .35; } 100% { transform: scale(2.4); opacity: 0; } }
+.mapa .nota { position: absolute; left: 12px; bottom: 10px; font: 400 10px var(--f-rotulo); letter-spacing: .08em; text-transform: uppercase; color: var(--texto-2); }
+
+/* ---------- controles ---------- */
+.anel { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; transform: translate(-50%, -50%); color: var(--texto); opacity: .85; transition: opacity .4s; }
+.palco.pronto .anel { opacity: 0; }
+.progresso { position: absolute; left: 0; bottom: 0; height: 1px; opacity: .8; width: calc(var(--p, 0) * 100%); background: var(--laranja); z-index: 3; }
+.dica { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; font: 400 11px var(--f-rotulo); letter-spacing: .1em; text-transform: uppercase; color: var(--texto-2); opacity: var(--d, 1); pointer-events: none; }
+.dica::before { content: "↓"; width: 26px; height: 26px; border: 1px dashed rgba(246,238,228,.5); border-radius: 50%; display: grid; place-items: center; animation: desce 1.8s var(--ease) infinite; }
+@keyframes desce { 50% { transform: translateY(5px); } }
+.seguinte { position: absolute; right: var(--g); bottom: 18px; z-index: 3; }
+.seguinte[hidden] { display: none; }
+.aviso { position: absolute; left: var(--g); bottom: 18px; z-index: 2; font: 400 10px/1.3 var(--f-rotulo); letter-spacing: .08em; text-transform: uppercase; color: var(--texto-2); background: rgba(28,18,12,.55); border: 1px dashed rgba(246,238,228,.3); border-radius: 999px; padding: 6px 12px; pointer-events: none; }
+
+/* carregador: o croissant em linha que se enche de laranja com o download */
+.carregador { position: fixed; inset: 0; z-index: 50; background: radial-gradient(90% 70% at 50% 45%, #2a1a12 0%, var(--canvas) 70%); display: grid; place-items: center; transition: opacity .9s var(--ease) .15s, visibility 0s 1.1s; }
+.carregador.saiu { opacity: 0; visibility: hidden; }
+.planta { width: min(70vw, 520px); overflow: visible; transition: transform 1.1s var(--ease); }
+.carregador.saiu .planta { transform: scale(1.35); }
+.planta .contorno { fill: none; stroke: var(--blush); stroke-width: 1.6; stroke-linejoin: round; stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: traca 2.2s var(--ease) forwards; }
+.planta .gomo { fill: none; stroke: rgba(242,225,215,.7); stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 300; stroke-dashoffset: 300; animation: traca 1.6s var(--ease) forwards; }
+.planta .gomo:nth-of-type(2) { animation-delay: .2s; } .planta .gomo:nth-of-type(3) { animation-delay: .35s; } .planta .gomo:nth-of-type(4) { animation-delay: .5s; } .planta .gomo:nth-of-type(5) { animation-delay: .65s; }
+.planta .enche { transition: transform .5s var(--ease); }
+@keyframes traca { to { stroke-dashoffset: 0; } }
+@keyframes aparece { to { opacity: 1; } }
+.carregador .massa { position: absolute; left: 50%; bottom: clamp(32px, 9vh, 80px); transform: translateX(-50%); font: 400 12.5px var(--f-rotulo); letter-spacing: .1em; color: var(--texto); white-space: nowrap; }
+.carregador .massa b { color: var(--rosa); font-weight: 400; display: inline-block; min-width: 3.2ch; text-align: right; }
+.carregador .marca { position: absolute; left: var(--g); top: 22px; }
+
+/* ---------- rodapé do site ---------- */
+.rodape { position: relative; z-index: 1; background: #140d09; border-top: 1px solid var(--linha); padding: clamp(56px, 8vw, 104px) var(--g) 32px; font-weight: 400; }
+.rodape .colunas { display: grid; grid-template-columns: 1.5fr repeat(3, minmax(0, 1fr)) .9fr; gap: clamp(24px, 3.6vw, 56px); align-items: start; }
+.rodape h3, .rodape .marca { min-height: 34px; margin: 0 0 18px; }
+.rodape h3 { display: flex; align-items: center; gap: 9px; font: 230 19px/1.2 var(--f-titulo); font-variation-settings: 'SOFT' 100; color: var(--blush); }
+.rodape .sede h3::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cor); flex: none; }
+.rodape nav h3 { font: 400 11px/1.2 var(--f-rotulo); letter-spacing: .14em; text-transform: uppercase; color: var(--rosa); }
+.rodape .marca b { font-size: 22px; }
+.rodape p { margin: 0 0 12px; color: var(--texto-2); font-size: 14.5px; line-height: 1.6; }
+.rodape .sobre p { max-width: 32ch; }
+.rodape .sede a { display: inline-block; margin-top: 4px; font: 400 10.5px var(--f-rotulo); letter-spacing: .12em; text-transform: uppercase; color: var(--rosa); text-decoration: none; border-bottom: 1px solid rgba(209,175,154,.4); padding-bottom: 4px; transition: border-color .3s, color .3s; }
+.rodape .sede a:hover { color: var(--blush); border-color: var(--rosa); }
+.rodape ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
+.rodape ul a { text-decoration: none; color: var(--texto-2); font-size: 14.5px; transition: color .3s; }
+.rodape ul a:hover { color: var(--blush); }
+.rodape .ig { display: inline-flex; align-items: center; gap: 10px; margin-top: 6px; text-decoration: none; font-size: 14.5px; color: var(--texto-2); }
+.rodape .ig svg { width: 18px; height: 18px; stroke: var(--rosa); fill: none; stroke-width: 1.3; }
+.rodape .letras { margin-top: clamp(48px, 7vw, 88px); padding-top: 24px; border-top: 1px solid var(--linha); display: grid; grid-template-columns: 1.5fr 3.9fr; gap: clamp(24px, 3.6vw, 56px); font-size: 12.5px; line-height: 1.6; color: rgba(214,195,180,.75); }
+.rodape .letras span:first-child { color: var(--texto-2); }
+@media (max-width: 1100px) { .rodape .colunas { grid-template-columns: repeat(3, minmax(0, 1fr)); } .rodape .sobre { grid-column: 1 / -1; } .rodape .letras { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .rodape .colunas { grid-template-columns: minmax(0, 1fr); } .rodape h3, .rodape .marca { min-height: 0; margin-bottom: 12px; } }
+
+/* ---------- movimento reduzido: quadros parados, mesmo texto ---------- */
+.parado { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .filme { display: none; }
+  .parado { display: block; position: relative; }
+  .parado section { position: relative; min-height: 100vh; display: grid; align-items: center; background: center / cover no-repeat; padding: 96px var(--g) 48px; }
+  .parado section::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20,12,8,.86), rgba(20,12,8,.3) 70%); }
+  .parado .batida, .parado .fim { position: relative; opacity: 1; inset: auto; }
+  .parado .txt { position: relative; left: auto; top: auto; transform: none; width: auto; max-width: 46ch; }
+  .parado .w > span, .parado .chips li, .parado .acoes, .parado .passos li, .parado .selo, .parado .ficha .painel, .parado .casa { transform: none; opacity: 1; animation: none; }
+  .parado .acoes { pointer-events: auto; }
+  .parado .camadas i { transform: none; }
+  .parado .fim .grade { position: relative; inset: auto; transform: none; grid-template-columns: minmax(0, 1fr); }
+  .parado .mapa { display: none; }
+  .parado .camadas-m { position: relative; display: flex; flex-wrap: wrap; gap: 14px; margin-top: 24px; }
+  .parado .camada { position: relative; top: auto !important; right: auto !important; transform: none; opacity: 1; scale: 1; clip-path: none; }
+  .parado section > .batida { display: grid; }
+  .parado .dc-fotos { position: relative; right: auto; top: auto; transform: none; width: 260px; margin-top: 24px; --p: 0; } .parado .dc-foto.um { clip-path: none; } .parado .dc-foto.dois, .parado .dc-conta { display: none; }
+  .parado .lista { position: relative; right: auto; top: auto; transform: none; width: auto; max-width: 520px; margin-top: 28px; } .parado .lista li { opacity: 1; transform: none; animation: none; } .parado .lista li::after { transform: none; }
+  .parado .linha-casas { position: relative; right: auto; top: auto; transform: none; margin-top: 24px; } .parado .linha-casas li { opacity: 1; transform: none; animation: none; } .parado .linha-casas li::after { transform: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+/* ---------- celular ---------- */
+@media (max-width: 760px) {
+  .txt { top: auto; bottom: 12vh; width: auto; right: var(--g); transform: translate(var(--x, 0px), var(--y, 18px)); }
+  .ficha .txt { bottom: 8vh; width: auto; }
+  .ficha .painel { padding: 16px; }
+  .passos { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .sombra { background: linear-gradient(0deg, rgba(14,9,6,.95) 0%, rgba(14,9,6,.82) 36%, rgba(14,9,6,.4) 60%, rgba(14,9,6,0) 82%), linear-gradient(180deg, rgba(14,9,6,.55) 0%, rgba(14,9,6,0) 16%); }
+  .sombra-dir { display: none; }
+  .chips { margin-top: 14px; gap: 6px; } .chips li { padding: 6px 10px; font-size: 11px; }
+  .acoes { margin-top: 14px; }
+  .camadas-m { position: absolute; left: var(--g); right: var(--g); top: 72px; height: 44vh; }
+  .camadas-m > .camada { top: auto !important; right: auto !important; --d: .4 !important; }
+  .dc-fotos { right: auto; left: 50%; top: 76px; width: min(44vw, 34vh * .75); transform: translateX(-50%); }
+  .dc-conta { top: calc(100% + 10px); }
+  .linha-casas { left: var(--g); right: var(--g); top: 84px; width: auto; transform: none; }
+  .lista { left: var(--g); right: var(--g); top: 76px; width: auto; transform: translateY(var(--y, 18px)); padding: 14px 16px 2px; background: rgba(18,12,8,.88); }
+  .lista li { padding: 11px 0 10px; grid-template-columns: 30px 1fr; } .lista b { font-size: 17px; } .lista p { font-size: 13px; margin-top: 2px; } .lista small { display: none; }
+  .linha-casas li { padding-bottom: 14px; } .linha-casas b { font-size: 18px; }
+  .rest-rotulo { top: calc(46% - 1.6em - 26vw); }
+  .grande { left: var(--g); right: var(--g); white-space: normal; font-size: 15vw; line-height: 1.02; top: 46%; }
+  .grande .pal span { transform: translateY(calc((1 - var(--c)) * 40%)); }
+  .moldura { width: 70vw; } .card { width: 40vw; } .card.foco { width: calc(70vw - 14px); }
+  .rest-legenda { top: auto; bottom: 64px; right: var(--g); width: auto; transform: none; } .rest-legenda b { font-size: 17px; } .rest-legenda p { display: none; }
+  .moldura, .trilho { top: 42%; }
+  .fim .grade { grid-template-columns: minmax(0, 1fr); top: 80px; bottom: 52px; align-content: end; gap: 10px; }
+  .fim h2 { font-size: 26px; } .fim .rotulo { margin-top: 6px; margin-bottom: 10px; } .fim .sub { margin-bottom: 10px; font-size: 15px; }
+  .mapa { grid-row: 1; aspect-ratio: auto; height: clamp(120px, 22vh, 200px); }
+  .flocos i:nth-child(2n) { display: none; }
+  .casa { padding: 9px 14px; }
+  @media (max-height: 760px) { .fim .sub { display: none; } .mapa { height: 18vh; } }
+ .casa b { font-size: 18px; } .casa > span { font-size: 13px; }
+  .aviso { bottom: 12px; right: 72px; font-size: 9px; padding: 5px 10px; }
+  .aviso .longo { display: none; }
+  .seguinte { bottom: 8px; min-height: 40px; padding: 0 14px; }
+  .seguinte span { display: none; }
+  .dica { display: none; }
+}
+</style>
+</head>
+<body class="carregando">
+
+<div class="carregador" id="carregador" role="status" aria-live="polite">
+  <span class="marca"><b>FERMENTA</b><small>pão e cozinha</small></span>
+  <svg class="planta" viewBox="20 40 360 160" aria-hidden="true">
+    <defs>
+      <clipPath id="corpo"><path d="M40,150 C70,110 110,62 200,58 C290,62 330,110 360,150 C330,168 300,176 268,170 C240,186 160,186 132,170 C100,176 70,168 40,150 Z"/></clipPath>
+      <linearGradient id="dourado" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#a3562f"/><stop offset=".6" stop-color="#d0703a"/><stop offset="1" stop-color="#e59a62"/></linearGradient>
+    </defs>
+    <g clip-path="url(#corpo)"><rect class="enche" id="enche" x="30" y="40" width="340" height="150" fill="url(#dourado)" style="transform-origin: 200px 190px; transform: scaleY(0)"/></g>
+    <path class="contorno" d="M40,150 C70,110 110,62 200,58 C290,62 330,110 360,150 C330,168 300,176 268,170 C240,186 160,186 132,170 C100,176 70,168 40,150 Z"/>
+    <path class="gomo" d="M100,92 C112,120 116,150 112,174"/>
+    <path class="gomo" d="M148,66 C160,105 162,145 156,180"/>
+    <path class="gomo" d="M200,58 C206,100 206,150 200,184"/>
+    <path class="gomo" d="M252,66 C240,105 238,145 244,180"/>
+    <path class="gomo" d="M300,92 C288,120 284,150 288,174"/>
+  </svg>
+  <span class="massa">(Massa = <b id="pct">0%</b>)</span>
+</div>
+
+<header class="topo" id="topo">
+  <a class="marca" href="#inicio" data-ir="inicio" aria-label="Fermenta, voltar ao início"><b>FERMENTA</b><small>pão e cozinha</small></a>
+  <nav class="nav" aria-label="Seções">
+    <a href="#cap-dc" data-ir="dc">A cozinha</a>
+    <a href="#cap-24" data-ir="c24">A 24</a>
+    <a href="#cap-almoco" data-ir="rest">Almoço</a>
+    <a href="#cap-tarde" data-ir="tarde">À tarde</a>
+    <a href="#cap-eventos" data-ir="eventos">Eventos</a>
+    <a href="#cap-praca" data-ir="breve">A praça</a>
+  </nav>
+  <a class="btn cheio" href="#cap-sedes" data-ir="fim"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span>Ache sua sede</span></a>
+  <button class="btn menu-btn" id="menu-btn" aria-expanded="false" aria-controls="menu-lista">Menu</button>
+</header>
+<nav class="menu-lista" id="menu-lista" aria-label="Menu">
+  <a href="#cap-dc" data-ir="dc">A cozinha</a>
+  <a href="#cap-24" data-ir="c24">A 24 de Outubro</a>
+  <a href="#cap-almoco" data-ir="rest">Almoço</a>
+  <a href="#cap-tarde" data-ir="tarde">À tarde</a>
+  <a href="#cap-eventos" data-ir="eventos">Eventos</a>
+  <a href="#cap-praca" data-ir="breve">A praça</a>
+  <a href="#cap-sedes" data-ir="fim">Ache sua sede</a>
+</nav>
+
+<main>
+<div class="filme" id="filme">
+  <div class="palco" id="palco">
+    <div class="poster" style="background-image:url('assets/poster.jpg')"></div>
+    <video id="video" preload="none" muted playsinline aria-hidden="true" tabindex="-1"></video>
+    <div class="sombra" id="sombra"></div>
+    <div class="sombra-dir" id="sombra-dir"></div>
+    <div class="flocos" id="flocos" aria-hidden="true"></div>
+    <svg class="anel" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="126" style="stroke-dashoffset:var(--ld,126)" transform="rotate(-90 24 24)"/></svg>
+
+    <!-- abertura: já está na tela quando a página abre -->
+    <section class="batida" data-b="abertura">
+      <div class="txt"><span class="rotulo">Fermenta · pão e cozinha · Porto Alegre</span><h1 class="partir">Antes de abrir a porta, a massa já está trabalhando.</h1></div>
+    </section>
+
+    <!-- DC Navegantes: fotos reais da casa -->
+    <section class="batida sede" data-b="dc">
+      <div class="txt">
+        <span class="rotulo">DC Navegantes · 4º Distrito</span>
+        <h2 class="partir">No DC Navegantes, o dia começa no balcão.</h2>
+        <p>Pão de fermentação natural, croissant, café especial, o Smash e o Guisadin. É da cozinha do DC que a massa sai para as outras casas.</p>
+        <ul class="chips">
+          <li style="--i:0"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>R. Frederico Mentz, 1561</li>
+          <li style="--i:1"><svg viewBox="0 0 24 24"><path d="M5 10h11v4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M9 4v3M12 4v3"/></svg>Party Coffee · qui e sex, 17h às 19h</li>
+        </ul>
+        <div class="acoes"><a class="btn" href="https://www.google.com/maps/search/?api=1&query=R.+Frederico+Mentz%2C+1561+-+Navegantes%2C+Porto+Alegre" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>Como chegar</a></div>
+      </div>
+      <div class="dc-fotos" aria-label="Fotos da casa">
+        <figure class="dc-foto um"><img src="assets/dc-letreiro-v.jpg" alt="Cliente à mesa sob o letreiro FERMENTA pão e cozinha, no DC Navegantes"><figcaption>DC Navegantes</figcaption></figure>
+        <figure class="dc-foto dois"><img src="assets/dc-croissant-v.jpg" alt="Cliente segurando um folhado da Fermenta"><figcaption>Na Fermenta</figcaption></figure>
+        <span class="dc-conta" aria-hidden="true"><b class="c1">01</b><b class="c2">02</b><i></i><span>/ 02</span></span>
+      </div>
+    </section>
+
+    <!-- túnel: a ficha cai junto com a casca -->
+    <section class="batida ficha" data-b="tunel">
+      <div class="txt">
+        <div class="painel">
+          <span class="rotulo">Por dentro · a massa folhada</span>
+          <h2 class="partir">Farinha, água, manteiga e tempo.</h2>
+          <ul class="passos">
+            <li style="--i:0"><svg viewBox="0 0 24 24"><path d="M6 20h12l-1-11H7z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg><b>Farinha tipo 55</b><small>a base da massa</small></li>
+            <li style="--i:1"><svg viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 9V7h10v2"/></svg><b>Manteiga fria</b><small>uma camada inteira, dobrada dentro</small></li>
+            <li style="--i:2"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><b>3 dobras = <span data-n="27">0</span> camadas<span class="camadas" aria-hidden="true"><i style="--c:0"></i><i style="--c:1"></i><i style="--c:2"></i><i style="--c:3"></i><i style="--c:4"></i><i style="--c:5"></i><i style="--c:6"></i><i style="--c:7"></i><i style="--c:8"></i></span></b><small>a conta da massa folhada</small></li>
+            <li style="--i:3"><svg viewBox="0 0 24 24"><path d="M10 14V5a2 2 0 0 1 4 0v9a4 4 0 1 1-4 0z"/><path d="M12 11v6"/></svg><b><span data-n="190">0</span> °C</b><small>no forno, até dourar fundo</small></li>
+          </ul>
+          <p class="selo" style="--i:4">Receita clássica de referência, não a da Fermenta. A receita da casa: <span class="confirmar">[A CONFIRMAR]</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 24 de Outubro -->
+    <section class="batida sede" data-b="c24">
+      <div class="txt">
+        <span class="rotulo">24 de Outubro · Auxiliadora</span>
+        <h2 class="partir">Na 24 de Outubro, o dia começa na vitrine.</h2>
+        <p>Padaria, café e restaurante. Pães, croissants, folhados e cafés especiais, com o croissant inteiro de novo ao lado de um espresso.</p>
+        <ul class="chips">
+          <li style="--i:0" data-agora24></li>
+          <li style="--i:1"><svg viewBox="0 0 24 24"><path d="M6 3v8a2 2 0 0 0 4 0V3M8 11v10M16 3c-1.7 0-3 2.2-3 5s1.3 4 3 4v9"/></svg>Almoço · 11h30 às 14h30, seg. a sáb.</li>
+          <li style="--i:2"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>R. 24 de Outubro, 1513</li>
+        </ul>
+        <div class="acoes"><a class="btn" href="https://www.google.com/maps/search/?api=1&query=Fermenta%20P%C3%A3o%20e%20Cozinha%20Rua%2024%20de%20Outubro%201513%20Porto%20Alegre" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>Como chegar</a></div>
+      </div>
+    </section>
+
+    <!-- restaurante: almoço, lettering e carrossel -->
+    <div class="rest" id="rest" aria-label="Almoço na 24 de Outubro">
+      <div class="veu"></div>
+      <span class="rest-rotulo rotulo">24 de Outubro · meio-dia</span>
+      <h2 class="grande" id="grande">Ao meio-dia, temos almoço.</h2>
+      <div class="rest-legenda"><span class="rotulo">No almoço da 24</span><b>Buffet premium, das 11h30 às 14h30, de segunda a sábado.</b><p>Saladas, orgânicos e cozinha de território.</p><small>Pratos ilustrativos, gerados por IA</small></div>
+      <div class="moldura" aria-hidden="true"></div>
+      <div class="trilho" id="trilho">
+        <div class="card" style="--i:0; background-image:url('assets/pratos/p1-costela-premium.jpg')"><span>Cozinha de território</span></div>
+        <div class="card" style="--i:1; background-image:url('assets/pratos/p2-abobrinha-gratinada.jpg')"><span>Gratinados do buffet</span></div>
+        <div class="card" style="--i:2; background-image:url('assets/pratos/p3-salada-organica.jpg')"><span>Saladas e orgânicos</span></div>
+        <div class="card" style="--i:3; background-image:url('assets/pratos/p5-peixe.jpg')"><span>Cozinha de território</span></div>
+        <div class="card" style="--i:4; background-image:url('assets/pratos/p4-pao-fermentacao.jpg')"><span>Pão de fermentação natural</span></div>
+        <div class="card" style="--i:5; background-image:url('assets/pratos/p6-torta.jpg')"><span>Do forno para o balcão</span></div>
+      </div>
+      <div class="preto"></div>
+    </div>
+
+    <!-- à tarde: café e mesa para trabalhar -->
+    <section class="batida" data-b="tarde">
+      <div class="txt">
+        <span class="rotulo">À tarde · depois do almoço</span>
+        <h2 class="partir">Ninguém aqui tem pressa. Nem quem chega para trabalhar.</h2>
+        <p>Café da tarde, mesa para abrir o computador e uma pausa com o que acabou de sair do forno.</p>
+      </div>
+      <aside class="lista" aria-label="À tarde, na prática">
+        <span class="rotulo">Na prática</span>
+        <ol>
+          <li style="--i:0"><span class="n">01</span><div><b>Party Coffee</b><p>Fim de tarde no DC Navegantes, às quintas e sextas, das 17h às 19h.</p></div><small>DC Navegantes</small></li>
+          <li style="--i:1"><span class="n">02</span><div><b>Mesa para trabalhar</b><p>Café e croissant sem sair da mesa. Wi-Fi e tomadas <span class="confirmar">[A CONFIRMAR]</span></p></div><small>Ocasião <span class="confirmar">[A VALIDAR]</span></small></li>
+          <li style="--i:2"><span class="n">03</span><div><b>Café até as 18h</b><p>Padaria e café abertos a tarde inteira.</p></div><small>24 de Outubro</small></li>
+        </ol>
+      </aside>
+    </section>
+
+    <!-- empresas e eventos -->
+    <section class="batida" data-b="eventos">
+      <div class="txt">
+        <span class="rotulo">Empresas e eventos · a cozinha do DC</span>
+        <h2 class="partir">Para evento, a gente não muda a receita. Muda a quantidade.</h2>
+        <p>A mesma massa das três casas, dobrada na mesma conta, para a reunião da empresa, o coffee break ou a festa.</p>
+        <div class="acoes"><a class="btn cheio" href="https://www.instagram.com/fermentapaoecozinha/" target="_blank" rel="noopener">Falar com a Fermenta</a></div>
+      </div>
+      <aside class="lista" aria-label="Empresas e eventos, na prática">
+        <span class="rotulo">Como funciona</span>
+        <ol>
+          <li style="--i:0"><span class="n">01</span><div><b>Uma cozinha, três casas</b><p>A produção central fica no DC Navegantes e abastece as outras casas.</p></div><small>Produção central</small></li>
+          <li style="--i:1"><span class="n">02</span><div><b>Coffee break e encomendas</b><p>Para empresas e eventos. Quantidades e prazos <span class="confirmar">[A CONFIRMAR]</span></p></div><small>Eventos</small></li>
+          <li style="--i:2"><span class="n">03</span><div><b>Como pedir</b><p>Hoje, pelo Instagram. Canal de pedidos <span class="confirmar">[A DEFINIR]</span></p></div><small>Contato</small></li>
+        </ol>
+      </aside>
+    </section>
+
+    <!-- do forno para a praça: a expansão -->
+    <section class="batida" data-b="breve">
+      <div class="txt">
+        <span class="rotulo">A terceira casa · em breve</span>
+        <h2 class="partir">Do forno para a praça.</h2>
+        <p>A Fermenta abre a terceira casa no chalé da Praça Otávio Rocha, no Centro Histórico. Abre no fim de novembro <span class="confirmar">[A CONFIRMAR o dia]</span>.</p>
+      </div>
+      <ul class="linha-casas">
+        <li style="--i:0; --cor:var(--vermelho)"><b>DC Navegantes</b><span>A cozinha · desde out. de 2025</span></li>
+        <li style="--i:1; --cor:var(--laranja)"><b>24 de Outubro</b><span>Padaria, café e restaurante · desde set. de 2026</span></li>
+        <li class="breve" style="--i:2"><b>Praça Otávio Rocha</b><span>O chalé · fim de nov. de 2026</span></li>
+      </ul>
+    </section>
+
+    <!-- ache sua sede -->
+    <section class="fim batida" data-b="fim">
+      <div class="grade">
+        <div>
+          <span class="rotulo">Ache sua sede</span>
+          <h2 class="partir">Três casas. Escolha pelo horário, não pelo mapa.</h2>
+          <p class="sub">Mas, se precisar do mapa, ele está aqui.</p>
+          <div class="casas">
+            <a class="casa" data-casa="dc" style="--i:0; --cor:var(--vermelho)" href="https://www.google.com/maps/search/?api=1&query=R.+Frederico+Mentz%2C+1561+-+Navegantes%2C+Porto+Alegre" target="_blank" rel="noopener"><b>DC Navegantes</b><span>A cozinha · R. Frederico Mentz, 1561</span><em>Como chegar <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></em></a>
+            <a class="casa" data-casa="c24" style="--i:1; --cor:var(--laranja)" href="https://www.google.com/maps/search/?api=1&query=Fermenta%20P%C3%A3o%20e%20Cozinha%20Rua%2024%20de%20Outubro%201513%20Porto%20Alegre" target="_blank" rel="noopener"><b>24 de Outubro</b><span data-agora24-curto>Das 8h às 18h · almoço seg. a sáb.</span><em>Como chegar <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></em></a>
+            <a class="casa" data-casa="praca" style="--i:2; --cor:var(--mostarda)" href="https://www.google.com/maps/search/?api=1&query=Pra%C3%A7a%20Ot%C3%A1vio%20Rocha%20Porto%20Alegre" target="_blank" rel="noopener"><b>Praça Otávio Rocha</b><span>O chalé · abre no fim de novembro</span><em>Ver no mapa <svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></em></a>
+          </div>
+        </div>
+        <div class="mapa" aria-label="Mapa ilustrativo das três casas">
+          <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice">
+            <path class="rio" d="M0,0 L120,0 C108,40 92,70 98,110 C104,150 84,190 60,220 C40,246 30,270 34,300 L0,300 Z"/>
+            <g>
+              <path class="rua" style="--i:0" d="M110,60 C180,70 260,60 400,40"/>
+              <path class="rua" style="--i:1" d="M100,130 C200,125 300,140 400,130"/>
+              <path class="rua" style="--i:2" d="M80,210 C180,200 280,215 400,230"/>
+              <path class="rua" style="--i:3" d="M170,0 C175,90 160,200 170,300"/>
+              <path class="rua" style="--i:4" d="M260,0 C250,100 270,200 255,300"/>
+              <path class="rua" style="--i:5" d="M330,0 C335,90 320,200 345,300"/>
+              <path class="rua" style="--i:6" d="M120,250 C200,160 280,120 380,80"/>
+            </g>
+            <path class="rota" d="M196,84 C240,96 268,118 292,140"/>
+            <path class="rota" d="M196,84 C176,130 160,170 146,206"/>
+            <g class="pino" data-casa="dc" style="--i:0; --cor:var(--vermelho)"><circle class="halo" cx="196" cy="84" r="10"/><circle class="ponto" cx="196" cy="84" r="6.5"/><text x="210" y="78">DC Navegantes</text></g>
+            <g class="pino" data-casa="c24" style="--i:1; --cor:var(--laranja)"><circle class="halo" cx="292" cy="140" r="10"/><circle class="ponto" cx="292" cy="140" r="6.5"/><text x="248" y="164">24 de Outubro</text></g>
+            <g class="pino" data-casa="praca" style="--i:2; --cor:var(--mostarda)"><circle class="halo" cx="146" cy="206" r="10"/><circle class="ponto" cx="146" cy="206" r="6.5"/><text x="160" y="226">Praça Otávio Rocha</text></g>
+          </svg>
+          <span class="nota">Mapa ilustrativo · fora de escala</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="corte" id="corte"></div>
+    <span class="aviso">Protótipo<span class="longo"> conceitual</span> · não é o site oficial<span class="longo"> da Fermenta</span></span>
+    <span class="dica" id="dica">Role para continuar</span>
+    <button class="btn seguinte" id="seguinte" type="button" aria-label="Ir para o próximo trecho"><span>Próximo</span><svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
+    <div class="progresso" id="progresso"></div>
+  </div>
+</div>
+
+<!-- movimento reduzido: o mesmo roteiro em quadros parados -->
+<div class="parado" aria-label="Versão sem movimento">
+  <section style="background-image:url('assets/q1.jpg')"><div class="batida"><div class="txt"><span class="rotulo">Fermenta · pão e cozinha · Porto Alegre</span><h1>Antes de abrir a porta, a massa já está trabalhando.</h1></div></div></section>
+  <section id="cap-dc" style="background-image:url('assets/dc-letreiro-v.jpg')" data-copia="dc"></section>
+  <section style="background-image:url('assets/q2.jpg')" data-copia="tunel"></section>
+  <section id="cap-24" style="background-image:url('assets/q3.jpg')" data-copia="c24"></section>
+  <section id="cap-almoco" style="background-image:url('assets/pratos/p1-costela-premium.jpg')"><div class="batida"><div class="txt"><span class="rotulo">24 de Outubro · meio-dia</span><h2>Ao meio-dia, temos almoço.</h2><p>Buffet premium das 11h30 às 14h30, de segunda a sábado. Saladas, orgânicos e cozinha de território. Pratos ilustrativos, gerados por IA.</p></div></div></section>
+  <section id="cap-tarde" style="background-image:url('assets/q4.jpg')" data-copia="tarde"></section>
+  <section id="cap-eventos" style="background-image:url('assets/q5.jpg')" data-copia="eventos"></section>
+  <section id="cap-praca" style="background-image:url('assets/q6.jpg')" data-copia="breve"></section>
+  <section id="cap-sedes" style="background-image:url('assets/q7.jpg')" data-copia="fim"></section>
+</div>
+</main>
+
+<footer class="rodape" id="rodape">
+  <div class="colunas">
+    <div class="col sobre">
+      <a class="marca" href="#inicio" data-ir="inicio"><b>FERMENTA</b><small>pão e cozinha</small></a>
+      <p>Padaria de fermentação natural em Porto Alegre. Uma cozinha no 4º Distrito, três casas na cidade.</p>
+      <a class="ig" href="https://www.instagram.com/fermentapaoecozinha/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".8"/></svg>@fermentapaoecozinha</a>
+    </div>
+    <div class="col sede" style="--cor:var(--vermelho)">
+      <h3>DC Navegantes</h3>
+      <p>R. Frederico Mentz, 1561<br>Navegantes, 4º Distrito</p>
+      <p>Horário <span class="confirmar">[A CONFIRMAR]</span></p>
+      <a href="https://www.google.com/maps/search/?api=1&query=R.+Frederico+Mentz%2C+1561+-+Navegantes%2C+Porto+Alegre" target="_blank" rel="noopener">Como chegar</a>
+    </div>
+    <div class="col sede" style="--cor:var(--laranja)">
+      <h3>24 de Outubro</h3>
+      <p>R. 24 de Outubro, 1513<br>Auxiliadora</p>
+      <p>8h às 18h<br>Almoço 11h30 às 14h30, seg. a sáb.</p>
+      <a href="https://www.google.com/maps/search/?api=1&query=Fermenta%20P%C3%A3o%20e%20Cozinha%20Rua%2024%20de%20Outubro%201513%20Porto%20Alegre" target="_blank" rel="noopener">Como chegar</a>
+    </div>
+    <div class="col sede" style="--cor:var(--mostarda)">
+      <h3>Praça Otávio Rocha</h3>
+      <p>O chalé da praça<br>Centro Histórico</p>
+      <p>Abre no fim de novembro <span class="confirmar">[A CONFIRMAR o dia]</span></p>
+      <a href="https://www.google.com/maps/search/?api=1&query=Pra%C3%A7a%20Ot%C3%A1vio%20Rocha%20Porto%20Alegre" target="_blank" rel="noopener">Ver no mapa</a>
+    </div>
+    <nav class="col" aria-label="Rodapé">
+      <h3>Navegue</h3>
+      <ul>
+        <li><a href="#cap-dc" data-ir="dc">A cozinha</a></li>
+        <li><a href="#cap-24" data-ir="c24">A 24 de Outubro</a></li>
+        <li><a href="#cap-almoco" data-ir="rest">Almoço</a></li>
+        <li><a href="#cap-tarde" data-ir="tarde">À tarde</a></li>
+        <li><a href="#cap-eventos" data-ir="eventos">Eventos</a></li>
+        <li><a href="#cap-sedes" data-ir="fim">Ache sua sede</a></li>
+      </ul>
+    </nav>
+  </div>
+  <div class="letras">
+    <span>Protótipo conceitual apresentado por Eddi Kochi. Não é o site oficial da Fermenta.</span>
+    <span>Vídeos gerados por IA; o logo na placa é o logo real aplicado em código. Fotos do DC Navegantes e de clientes: Instagram da Fermenta. Pratos e ambientes ilustrativos. Fontes: horário e endereço da 24 de Outubro (Rádio Pampa); 130 lugares, datas de abertura e Party Coffee (Jornal do Comércio, Eleone Prestes). Ficha da massa: receita clássica de referência (Weekend Bakery, adaptação de Jeffrey Hamelman), não a receita da Fermenta.</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  'use strict';
+  const reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = s => document.querySelector(s);
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const faixa = (f, a, b) => clamp((f - a) / (b - a));
+
+  // status ao vivo da 24, pelo relógio de Porto Alegre (horário confirmado: 8h às 18h)
+  function agora24() {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', hour: 'numeric', minute: 'numeric', weekday: 'long', hourCycle: 'h23' }).formatToParts(new Date()).map(x => [x.type, x.value]));
+    const h = +p.hour + +p.minute / 60;
+    if (/domingo/i.test(p.weekday)) return ['Hoje é domingo · horário <span class="confirmar">[A CONFIRMAR]</span>', '#b8262d'];
+    return h >= 8 && h < 18 ? ['Aberta agora · fecha às 18h', '#6fbf73'] : ['Fechada agora · abre às 8h', '#b8262d'];
+  }
+  const [txt24, cor24] = agora24();
+  document.querySelectorAll('[data-agora24]').forEach(el => { el.innerHTML = `<span class="agora" style="--cor:${cor24}">${txt24}</span>`; });
+
+  // versão parada recebe as mesmas batidas
+  document.querySelectorAll('[data-copia]').forEach(s => { const o = document.querySelector(`.palco [data-b="${s.dataset.copia}"]`); if (o) s.innerHTML = `<div class="batida ${o.className.replace('batida', '')}">${o.innerHTML}</div>`; });
+
+  // títulos: cada palavra numa máscara, para entrar de baixo
+  document.querySelectorAll('.palco .partir').forEach(h => {
+    let i = 0;
+    [...h.childNodes].forEach(n => {
+      if (n.nodeType !== 3) return;
+      const frag = document.createDocumentFragment();
+      n.textContent.split(/(\s+)/).forEach(p => {
+        if (!p) return;
+        if (/^\s+$/.test(p)) { frag.appendChild(document.createTextNode(p)); return; }
+        const w = document.createElement('span'); w.className = 'w'; const s = document.createElement('span'); s.textContent = p; s.style.setProperty('--i', i++); w.appendChild(s); frag.appendChild(w);
+      });
+      n.replaceWith(frag);
+    });
+  });
+  // letreiro grande do almoço: uma letra por vez
+  const grande = $('#grande');
+  grande.setAttribute('aria-label', grande.textContent);
+  { let i = 0; grande.innerHTML = grande.textContent.split(' ').map(p => `<span class="pal" aria-hidden="true">${[...p].map(c => `<span style="--i:${i++}">${c}</span>`).join('')}</span>`).join('<span class="esp"> </span>'); i++; }
+
+  // menu do celular
+  const menuBtn = $('#menu-btn');
+  menuBtn.addEventListener('click', () => { const a = !document.body.classList.contains('menu-aberto'); document.body.classList.toggle('menu-aberto', a); menuBtn.setAttribute('aria-expanded', a); menuBtn.textContent = a ? 'Fechar' : 'Menu'; });
+  const fechaMenu = () => { document.body.classList.remove('menu-aberto'); menuBtn.setAttribute('aria-expanded', 'false'); menuBtn.textContent = 'Menu'; };
+
+  if (reduz) { $('#carregador').remove(); document.body.classList.remove('carregando'); document.querySelectorAll('[data-ir]').forEach(a => a.addEventListener('click', fechaMenu)); return; }
+
+  const car = $('#carregador'), enche = $('#enche'), pct = $('#pct');
+  const inicioCar = performance.now();
+  function tiraCarregador() { if (car.classList.contains('saiu')) return; car.classList.add('saiu'); setTimeout(() => { document.body.classList.remove('carregando'); }, 450); }
+  // o enchimento persegue o download real, mas nunca mais rápido que ~45%/s: mesmo num download instantâneo a massa sobe
+  let alvoPct = 0, verPct = 0, rafPct = null, aoEncher = null;
+  function passoPct(agora) {
+    verPct = Math.min(alvoPct, (agora - inicioCar) / 1000 * 45);
+    pct.textContent = Math.floor(verPct) + '%'; enche.style.transform = 'scaleY(' + (verPct / 100).toFixed(3) + ')';
+    if (verPct < alvoPct) rafPct = requestAnimationFrame(passoPct); else { rafPct = null; if (verPct >= 100 && aoEncher) { const f = aoEncher; aoEncher = null; f(); } }
+  }
+  function carrega(f) { alvoPct = Math.max(alvoPct, Math.min(100, f * 100)); if (!rafPct) rafPct = requestAnimationFrame(passoPct); }
+  function sai() {
+    const vai = () => setTimeout(tiraCarregador, Math.max(400, 2400 - (performance.now() - inicioCar)));
+    if (verPct >= 100) vai(); else aoEncher = vai;
+    setTimeout(tiraCarregador, 4000);   // rede de segurança: o carregador nunca fica na frente se a animação parar
+  }
+
+  const URL_VIDEO = 'assets/filme.mp4', BYTES = 12423669, DURACAO = 48.042;
+  // o roteiro: o vídeo anda (move) e para quando o texto entra (para). vh = distância de scroll
+  const ROTEIRO = [
+    { move: [1.2, 5.0], vh: 100, b: 'abertura' },  // a abertura já está na tela; um scroll leva ao letreiro
+    { move: [5.0, 10.17], vh: 140 },               // o croissant se abre
+    { move: [10.17, 13.42], vh: 120 },             // mergulho no miolo: o túnel se abre por dentro do alvéolo
+    { move: [13.42, 16.6], vh: 80 },
+    { para: 'tunel', t: 16.6, vh: 100, flocos: 'entra' }, // a receita; a casca começa a cair com a ficha
+    { para: 'dc', t: 16.6, vh: 160, flocos: 'sai', paradas: [.3, .74] },  // mesmo quadro: a informação troca de lugar; uma foto, depois a outra
+    { move: [16.6, 22.23], vh: 130 },              // o túnel abre para a 24
+    { para: 'c24', t: 22.23, vh: 100 },
+    { move: [22.23, 23.83], vh: 60 },              // giro de câmera da mesa até o prato
+    { cena: 'rest', t: 23.83, vh: 320, paradas: [.39, .56, .696, .9] },
+    { move: [24.22, 26.83], vh: 70 },              // sai do preto da cena (24,22 s é o quadro mais escuro)
+    { para: 'tarde', t: 26.83, vh: 110 },
+    { move: [26.83, 31.83], vh: 100 },
+    { para: 'eventos', t: 31.83, vh: 110 },
+    { move: [31.83, 36.83], vh: 100 },
+    { para: 'breve', t: 36.83, vh: 100 },
+    { move: [36.83, 48.0], vh: 230 },              // um dia na mesa e o voo até a praça
+    { para: 'fim', t: 48.0, vh: 90 },
+  ];
+  const filme = $('#filme'), palco = $('#palco'), video = $('#video');
+  const sombra = $('#sombra'), sombraDir = $('#sombra-dir'), barra = $('#progresso'), dica = $('#dica'), seguinte = $('#seguinte'), corte = $('#corte');
+  const anel = palco.querySelector('.anel');
+  const batidas = {}; palco.querySelectorAll('[data-b]').forEach(el => { batidas[el.dataset.b] = el; });
+
+  // casca caindo: flocos com tamanho, velocidade e giro aleatórios
+  const flocos = $('#flocos');
+  for (let i = 0; i < 34; i++) {
+    const f = document.createElement('i'), w = 6 + Math.random() * 22;
+    f.style.cssText = `--x:${Math.random() * 100}%;--w:${w}px;--b:${w > 20 ? 2 : w < 10 ? 1.2 : 0}px;--t:${3 + Math.random() * 3.5}s;--atraso:${-Math.random() * 6}s;--dx:${(Math.random() - .5) * 30}vw;--giro:${(Math.random() - .5) * 900}deg`;
+    flocos.appendChild(f);
+  }
+
+  // monta a altura e as âncoras de parada
+  let total = 0; ROTEIRO.forEach(s => { s.ini = total; total += s.vh; });
+  filme.style.height = (total + 100) + 'vh';
+  const paradas = [];
+  ROTEIRO.forEach(s => (s.paradas || (s.para ? [.5] : [])).forEach(k => paradas.push(s.ini + s.vh * k)));
+  paradas.sort((a, b) => a - b);
+  paradas.forEach(p => { const a = document.createElement('span'); a.className = 'ancora'; a.style.top = p + 'vh'; filme.appendChild(a); });
+  const pontoDe = id => {
+    if (id === 'inicio') return 0;
+    const s = ROTEIRO.find(x => x.para === id || x.cena === id); if (!s) return 0;
+    return s.ini + s.vh * (s.paradas ? s.paradas[0] : .5);
+  };
+
+  // posição do scroll (em vh dentro do filme) → tempo do vídeo e batida ativa
+  function estado(vhPos) {
+    for (const s of ROTEIRO) {
+      if (vhPos <= s.ini + s.vh) {
+        const f = clamp((vhPos - s.ini) / s.vh);
+        if (s.para) { const o = clamp(Math.min(f / (s.paradas ? .16 : .22), (1 - f) / (s.paradas ? .16 : .22))); const fl = s.flocos === 'entra' ? clamp(f / .22) : s.flocos === 'sai' ? clamp((1 - f) / .22) : s.flocos ? o : 0; return { t: s.t, b: s.para, o, f, fl }; }
+        if (s.cena) return { t: s.t, b: null, o: 0, cena: s.cena, f };
+        const k = f * f * (3 - 2 * f), t = s.move[0] + (s.move[1] - s.move[0]) * k;
+        if (s.b) return { t, b: s.b, o: 1 - faixa(f, .2, .55), f: .5 };    // a abertura sai enquanto o vídeo anda
+        return { t, b: null, o: 0, fl: 0 };
+      }
+    }
+    const u = ROTEIRO[ROTEIRO.length - 1]; return { t: u.t, b: u.para, o: 1, f: 1 };
+  }
+  const posVh = () => { const r = filme.getBoundingClientRect(); return clamp(-r.top / innerHeight * 100, 0, total); };
+
+  let alvo = 0, mostrado = 0, raf = null, ultimo = 0, pronto = false, buscando = false;
+  const vivas = new Set();
+  function desenha(vh) {
+    const e = estado(vh);
+    for (const k in batidas) {
+      const o = e.b === k ? e.o : 0, el = batidas[k];
+      el.style.setProperty('--o', o.toFixed(3));
+      el.style.setProperty('--y', ((1 - o) * 18).toFixed(1) + 'px');
+      if (e.b === k) el.style.setProperty('--x', ((e.f < .5 ? 1 : -1) * (1 - o) * 46).toFixed(1) + 'px');
+      if (e.b === k) el.style.setProperty('--f', e.f.toFixed(3));
+      // entra (palavras, fichas, cartões) quando a batida assenta; reinicia se o visitante voltar
+      const viva = e.b === k && o > .5;
+      if (viva && !vivas.has(k)) { vivas.add(k); el.classList.add('viva'); contar(el); }
+      else if (!viva && e.b !== k && vivas.has(k)) { vivas.delete(k); el.classList.remove('viva'); }
+      if (k === 'fim') el.classList.toggle('ativo', o > .9);
+    }
+    flocos.style.setProperty('--fl', (e.fl || 0).toFixed(3)); flocos.classList.toggle('on', (e.fl || 0) > 0);
+    cenaRest(e.cena === 'rest' ? e.f : -1);
+    sombra.style.setProperty('--s', (e.b ? e.o : 0).toFixed(3));
+    sombraDir.style.setProperty('--s2', (['tarde', 'eventos', 'breve', 'dc'].includes(e.b) ? e.o : 0).toFixed(3));
+    dica.style.setProperty('--d', clamp(1 - vh / 30).toFixed(3));
+    barra.style.setProperty('--p', (vh / total).toFixed(4));
+    seguinte.hidden = vh > pontoDe('fim') - 5;
+    marcaMenu(vh);
+    return e.t;
+  }
+  const rest = $('#rest'), trilho = $('#trilho'), cards = [...trilho.children];
+  function cenaRest(f) {
+    rest.classList.toggle('on', f >= 0);
+    if (f < 0) return;
+    // 1) a frase: as letras sobem uma a uma enquanto ela atravessa a tela, até o ponto final
+    rest.style.setProperty('--veu', (.35 + faixa(f, .02, .12) * .3 + faixa(f, .4, .48) * .22).toFixed(3));
+    const kIn = faixa(f, .02, .2), kOut = faixa(f, .4, .46);
+    grande.style.setProperty('--k', kIn.toFixed(3)); grande.style.setProperty('--go', (1 - kOut).toFixed(3));
+    const estreito = innerWidth <= 760;   // no celular a frase quebra em linhas e as letras sobem no lugar, sem atravessar
+    const ini = estreito ? 0 : innerWidth * .06, fimX = estreito ? 0 : Math.min(ini, innerWidth - grande.scrollWidth - innerWidth * .06);
+    grande.style.setProperty('--gx', (ini + (fimX - ini) * faixa(f, .04, .38)).toFixed(1) + 'px');
+    rest.querySelector('.rest-rotulo').style.setProperty('--o', (faixa(f, .02, .08) * (1 - kOut)).toFixed(3));
+    // 2) só depois do ponto final: a moldura e os pratos cruzando a tela, e a legenda do buffet
+    rest.style.setProperty('--mo', (faixa(f, .44, .52) * (1 - faixa(f, .94, 1))).toFixed(3));
+    const en = faixa(f, .44, .56); trilho.style.setProperty('--en', (1 - Math.pow(1 - en, 3)).toFixed(3));
+    trilho.style.setProperty('--to', faixa(f, .44, .47).toFixed(3));
+    const pos = faixa(f, .56, .9) * (cards.length - 1), idx = Math.round(pos);
+    cards.forEach((el, i) => el.classList.toggle('foco', i === idx));
+    const i0 = Math.floor(pos), i1 = Math.min(cards.length - 1, i0 + 1), fr = pos - i0;
+    const centro = el => el.offsetLeft + el.offsetWidth / 2;
+    trilho.style.setProperty('--tx', (trilho.offsetWidth / 2 - (centro(cards[i0]) + (centro(cards[i1]) - centro(cards[i0])) * fr)).toFixed(1) + 'px');
+    rest.querySelector('.preto').style.setProperty('--po', faixa(f, .93, 1).toFixed(3));
+  }
+  function contar(raiz) {
+    raiz.querySelectorAll('[data-n]').forEach((el, i) => {
+      const n = +el.dataset.n, t0 = performance.now() + 1200 + i * 110;
+      const passo = agora => { const f = clamp((agora - t0) / 900); el.textContent = Math.round(n * (1 - Math.pow(1 - f, 3))); if (f < 1) requestAnimationFrame(passo); };
+      requestAnimationFrame(passo);
+    });
+  }
+  function quadro(agora) {
+    const dt = Math.min(100, agora - (ultimo || agora)); ultimo = agora;
+    mostrado += (alvo - mostrado) * (1 - Math.pow(1 - (viajando ? .18 : .07), dt / 16.667));
+    if (Math.abs(alvo - mostrado) < 0.05) mostrado = alvo;
+    const t = desenha(mostrado);
+    if (pronto && !buscando && Math.abs(video.currentTime - t) > 0.02) { buscando = true; video.currentTime = Math.min(t, video.duration - 0.05); }
+    if (mostrado !== alvo) raf = requestAnimationFrame(quadro); else { raf = null; ultimo = 0; }
+  }
+  video.addEventListener('seeked', () => { buscando = false; if (!raf) raf = requestAnimationFrame(quadro); });
+  function aoRolar() { alvo = posVh(); if (!raf) raf = requestAnimationFrame(quadro); clearTimeout(aoRolar.g); aoRolar.g = setTimeout(() => { if (mostrado !== alvo) { mostrado = alvo; quadro(performance.now()); } }, 900); }
+  addEventListener('scroll', aoRolar, { passive: true });
+
+  // ímã suave: só puxa para a frente, na direção em que o visitante rola, e nunca devolve para um texto já passado
+  let imaT = null, imaAndando = false, ultimaPos = 0, direcao = 0, viajando = false;
+  function ima() {
+    if (viajando) return;
+    if (imaAndando) { imaAndando = false; return; }
+    const v = posVh(); let melhor = null, d = 14;
+    for (const p of paradas) { const dist = (p - v) * direcao; if (dist > .5 && dist < d) { d = dist; melhor = p; } }
+    if (melhor !== null) { imaAndando = true; scrollTo({ top: filme.offsetTop + melhor * innerHeight / 100, behavior: 'smooth' }); }
+  }
+  addEventListener('scroll', () => {
+    const v = posVh(); if (Math.abs(v - ultimaPos) > .2) { direcao = Math.sign(v - ultimaPos); ultimaPos = v; }
+    clearTimeout(imaT); imaT = setTimeout(ima, 260);
+  }, { passive: true });
+  ['wheel', 'touchstart'].forEach(ev => addEventListener(ev, () => { imaAndando = false; if (viajando) viajando = false; }, { passive: true }));
+  addEventListener('resize', aoRolar);
+
+  // navegação por clique: menu, botão "Próximo" e setas levam a câmera até a parada com velocidade controlada
+  const topoDe = vh => filme.offsetTop + vh * innerHeight / 100;
+  const suave = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  async function viajar(vhAlvo) {
+    const de = posVh(), dist = Math.abs(vhAlvo - de);
+    if (dist < 1) return;
+    if (dist > 450) {   // longe: corta pelo preto em vez de passar o filme inteiro correndo
+      corte.classList.add('on'); await new Promise(r => setTimeout(r, 380));
+      scrollTo(0, topoDe(vhAlvo)); alvo = mostrado = vhAlvo; desenha(vhAlvo);
+      if (pronto) { buscando = true; video.currentTime = Math.min(estado(vhAlvo).t, video.duration - .05); }
+      await new Promise(r => setTimeout(r, 420)); corte.classList.remove('on'); return;
+    }
+    viajando = true; const dur = clamp(dist * 9, 700, 2600), t0 = performance.now(), y0 = scrollY, y1 = topoDe(vhAlvo);
+    await new Promise(fim => {
+      const passo = agora => {
+        if (!viajando) return fim();
+        const k = clamp((agora - t0) / dur); scrollTo(0, y0 + (y1 - y0) * suave(k));
+        if (k < 1) requestAnimationFrame(passo); else { viajando = false; fim(); }
+      };
+      requestAnimationFrame(passo);
+    });
+  }
+  const proxima = dir => { const v = posVh(); return dir > 0 ? paradas.find(p => p > v + 2) : [...paradas].reverse().find(p => p < v - 2) ?? 0; };
+  seguinte.addEventListener('click', () => { const p = proxima(1); if (p !== undefined) viajar(p); });
+  addEventListener('keydown', e => {
+    const el = e.target instanceof Element ? e.target : document.body;
+    if (el.closest('input, textarea, select') || posVh() >= total - 1 && e.key !== 'ArrowUp' && e.key !== 'PageUp') return;
+    const d = ['ArrowDown', 'PageDown', ' ', 'ArrowRight'].includes(e.key) ? 1 : ['ArrowUp', 'PageUp', 'ArrowLeft'].includes(e.key) ? -1 : 0;
+    if (!d || (e.key === ' ' && el.closest('a, button'))) return;
+    const p = proxima(d); if (p === undefined) return;
+    e.preventDefault(); viajar(p);
+  });
+  document.querySelectorAll('[data-ir]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); fechaMenu(); viajar(pontoDe(a.dataset.ir)); }));
+  // link direto (ex.: #cap-sedes, vindo da apresentação): viaja até o trecho depois de carregar
+  const alvoHash = /^#[a-z0-9-]+$/.test(location.hash) && document.querySelector(`[data-ir][href="${location.hash}"]`);
+  if (alvoHash) { const ir = () => setTimeout(() => viajar(pontoDe(alvoHash.dataset.ir)), 600); document.readyState === 'complete' ? ir() : addEventListener('load', ir); }
+  // marca no menu o trecho em que o visitante está
+  const linksMenu = [...document.querySelectorAll('.nav a[data-ir]')];
+  const pontosMenu = linksMenu.map(a => pontoDe(a.dataset.ir));
+  function marcaMenu(vh) { let atual = -1; pontosMenu.forEach((p, i) => { if (vh >= p - 60) atual = i; }); linksMenu.forEach((a, i) => a.classList.toggle('atual', i === atual)); }
+
+  // mapa: passar o mouse num cartão acende o pino, e vice-versa; clicar no pino abre a rota
+  document.querySelectorAll('[data-casa]').forEach(el => {
+    const k = el.dataset.casa, par = () => document.querySelectorAll(`[data-casa="${k}"]`);
+    el.addEventListener('pointerenter', () => par().forEach(x => x.classList.add('alvo')));
+    el.addEventListener('pointerleave', () => par().forEach(x => x.classList.remove('alvo')));
+    if (el.classList.contains('pino')) el.addEventListener('click', () => { const a = document.querySelector(`.casa[data-casa="${k}"]`); if (a) window.open(a.href, '_blank', 'noopener'); });
+  });
+
+  // profundidade pelo mouse
+  addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; palco.style.setProperty('--mx', (e.clientX / innerWidth * 2 - 1).toFixed(3)); palco.style.setProperty('--my', (e.clientY / innerHeight * 2 - 1).toFixed(3)); }, { passive: true });
+
+  (async () => {
+    try {
+      const ctrl = new AbortController(); let vigia = setTimeout(() => ctrl.abort(), 20000);
+      const res = await fetch(URL_VIDEO, { signal: ctrl.signal });
+      const tot = +res.headers.get('Content-Length') || BYTES, leitor = res.body.getReader(), partes = []; let veio = 0;
+      for (;;) {
+        const { done, value } = await leitor.read(); if (done) break;
+        clearTimeout(vigia); vigia = setTimeout(() => ctrl.abort(), 20000);
+        partes.push(value); veio += value.length;
+        anel.style.setProperty('--ld', Math.round(126 * (1 - Math.min(1, veio / tot))));
+        carrega(veio / tot);
+      }
+      clearTimeout(vigia);
+      video.src = URL.createObjectURL(new Blob(partes, { type: 'video/mp4' }));
+      video.addEventListener('canplay', () => { pronto = true; palco.classList.add('pronto'); aoRolar(); carrega(1); sai(); }, { once: true });
+      video.load();
+    } catch (e) {
+      // aberto direto da pasta (file://): o navegador bloqueia o fetch, então o vídeo carrega pela própria tag
+      video.preload = 'auto';
+      video.addEventListener('progress', () => { try { const b = video.buffered; if (b.length) carrega(b.end(b.length - 1) / (video.duration || DURACAO)); } catch (_) {} });
+      video.addEventListener('canplaythrough', () => { pronto = true; palco.classList.add('pronto'); anel.remove(); aoRolar(); carrega(1); sai(); }, { once: true });
+      video.addEventListener('error', () => { anel.remove(); carrega(1); sai(); }, { once: true });
+      video.src = URL_VIDEO; video.load();
+    }
+  })();
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  scrollTo(0, 0);
+  aoRolar();
+  setTimeout(tiraCarregador, 25000);   // último recurso: rede lenta ou travada
+  window.__prototipo = { total, ROTEIRO, paradas, pontoDe, viajar, ir: vh => { scrollTo(0, topoDe(vh)); } };
+})();
+</script>
+</body>
+</html>
