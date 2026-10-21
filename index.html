@@ -678,6 +678,9 @@ a { color: inherit; }
 
   const URL_VIDEO = 'assets/filme.mp4', BYTES = 12423669, DURACAO = 48.042;
   // o roteiro: o vídeo anda (move) e para quando o texto entra (para). vh = distância de scroll
+  // o roteiro: o vídeo anda (move) e para quando o texto entra (para). vh = distância de scroll.
+  // Os pontos de parada são os quadros em que cada animação do vídeo termina (medidos quadro a quadro);
+  // depois que o texto sai, o corte para o próximo ambiente é seco (linear, curto).
   const ROTEIRO = [
     { move: [1.2, 5.0], vh: 100, b: 'abertura' },  // a abertura já está na tela; um scroll leva ao letreiro
     { move: [5.0, 10.17], vh: 140 },               // o croissant se abre
@@ -685,17 +688,20 @@ a { color: inherit; }
     { move: [13.42, 16.6], vh: 80 },
     { para: 'tunel', t: 16.6, vh: 100, flocos: 'entra' }, // a receita; a casca começa a cair com a ficha
     { para: 'dc', t: 16.6, vh: 160, flocos: 'sai', paradas: [.3, .74] },  // mesmo quadro: a informação troca de lugar; uma foto, depois a outra
-    { move: [16.6, 22.23], vh: 130 },              // o túnel abre para a 24
-    { para: 'c24', t: 22.23, vh: 100 },
-    { move: [22.23, 23.83], vh: 60 },              // giro de câmera da mesa até o prato
-    { cena: 'rest', t: 23.83, vh: 320, paradas: [.39, .56, .696, .9] },
-    { move: [24.22, 26.83], vh: 70 },              // sai do preto da cena (24,22 s é o quadro mais escuro)
-    { para: 'tarde', t: 26.83, vh: 110 },
-    { move: [26.83, 31.83], vh: 100 },
-    { para: 'eventos', t: 31.83, vh: 110 },
-    { move: [31.83, 36.83], vh: 100 },
-    { para: 'breve', t: 36.83, vh: 100 },
-    { move: [36.83, 48.0], vh: 230 },              // um dia na mesa e o voo até a praça
+    { move: [16.6, 22.6], vh: 140 },               // o túnel abre para a 24; a câmera assenta em 22,6 s
+    { para: 'c24', t: 22.6, vh: 100 },
+    { move: [22.6, 23.83], vh: 50 },               // giro de câmera da mesa até o prato
+    { cena: 'rest', t: 23.83, vh: 270, paradas: [.39, .56, .7, .84] },
+    { move: [24.22, 24.75], vh: 18, linear: true },// corte seco para a massa
+    { move: [24.75, 28.35], vh: 90 },              // a massa cresce até o fim (28,3 s)
+    { para: 'tarde', t: 28.35, vh: 100 },
+    { move: [28.35, 29.35], vh: 20, linear: true },// corte seco para a dobra
+    { move: [29.35, 33.0], vh: 90 },               // a massa dobra até assentar (33,0 s)
+    { para: 'eventos', t: 33.0, vh: 100 },
+    { move: [33.0, 33.95], vh: 20, linear: true }, // corte seco para o forno
+    { move: [33.95, 37.55], vh: 90 },              // o croissant sai do forno e assenta (37,5 s)
+    { para: 'breve', t: 37.55, vh: 100 },
+    { move: [37.55, 48.0], vh: 220 },              // um dia na mesa e o voo até a praça
     { para: 'fim', t: 48.0, vh: 90 },
   ];
   const filme = $('#filme'), palco = $('#palco'), video = $('#video');
@@ -729,9 +735,9 @@ a { color: inherit; }
     for (const s of ROTEIRO) {
       if (vhPos <= s.ini + s.vh) {
         const f = clamp((vhPos - s.ini) / s.vh);
-        if (s.para) { const o = clamp(Math.min(f / (s.paradas ? .16 : .22), (1 - f) / (s.paradas ? .16 : .22))); const fl = s.flocos === 'entra' ? clamp(f / .22) : s.flocos === 'sai' ? clamp((1 - f) / .22) : s.flocos ? o : 0; return { t: s.t, b: s.para, o, f, fl }; }
+        if (s.para) { const o = s.paradas ? clamp(Math.min(f / .16, (1 - f) / .16)) : clamp(Math.min((f - .1) / .2, (1 - f) / .2)); const fl = s.flocos === 'entra' ? clamp(f / .22) : s.flocos === 'sai' ? clamp((1 - f) / .22) : s.flocos ? o : 0; return { t: s.t, b: s.para, o, f, fl }; }
         if (s.cena) return { t: s.t, b: null, o: 0, cena: s.cena, f };
-        const k = f * f * (3 - 2 * f), t = s.move[0] + (s.move[1] - s.move[0]) * k;
+        const k = s.linear ? f : f * f * (3 - 2 * f), t = s.move[0] + (s.move[1] - s.move[0]) * k;
         if (s.b) return { t, b: s.b, o: 1 - faixa(f, .2, .55), f: .5 };    // a abertura sai enquanto o vídeo anda
         return { t, b: null, o: 0, fl: 0 };
       }
@@ -758,6 +764,7 @@ a { color: inherit; }
     }
     flocos.style.setProperty('--fl', (e.fl || 0).toFixed(3)); flocos.classList.toggle('on', (e.fl || 0) > 0);
     cenaRest(e.cena === 'rest' ? e.f : -1);
+    enquadra(e.t);
     sombra.style.setProperty('--s', (e.b ? e.o : 0).toFixed(3));
     sombraDir.style.setProperty('--s2', (['tarde', 'eventos', 'breve', 'dc'].includes(e.b) ? e.o : 0).toFixed(3));
     dica.style.setProperty('--d', clamp(1 - vh / 30).toFixed(3));
@@ -765,6 +772,16 @@ a { color: inherit; }
     seguinte.hidden = vh > pontoDe('fim') - 5;
     marcaMenu(vh);
     return e.t;
+  }
+  // em tela vertical o vídeo 16:9 é cortado nas laterais: o enquadramento segue o croissant que se abre
+  // (o da esquerda, em ~34% da largura) e volta ao centro durante o mergulho, onde o túnel se abre no meio
+  const poster = palco.querySelector('.poster');
+  function enquadra(t) {
+    const sm = x => x * x * (3 - 2 * x);
+    const c = t < 5 ? .5 : t < 6.2 ? .5 - .16 * sm((t - 5) / 1.2) : t < 10.17 ? .34 : t < 13.42 ? .34 + .16 * sm((t - 10.17) / 3.25) : .5;
+    const wr = Math.max(innerWidth, innerHeight * 16 / 9), sobra = wr - innerWidth;
+    const pc = sobra < 1 ? 50 : clamp((c * wr - innerWidth / 2) / sobra) * 100;
+    const v = pc.toFixed(2) + '% 50%'; if (video.style.objectPosition !== v) { video.style.objectPosition = v; poster.style.backgroundPosition = v; }
   }
   const rest = $('#rest'), trilho = $('#trilho'), cards = [...trilho.children];
   function cenaRest(f) {
@@ -779,15 +796,15 @@ a { color: inherit; }
     grande.style.setProperty('--gx', (ini + (fimX - ini) * faixa(f, .04, .38)).toFixed(1) + 'px');
     rest.querySelector('.rest-rotulo').style.setProperty('--o', (faixa(f, .02, .08) * (1 - kOut)).toFixed(3));
     // 2) só depois do ponto final: a moldura e os pratos cruzando a tela, e a legenda do buffet
-    rest.style.setProperty('--mo', (faixa(f, .44, .52) * (1 - faixa(f, .94, 1))).toFixed(3));
+    rest.style.setProperty('--mo', (faixa(f, .44, .52) * (1 - faixa(f, .9, .94))).toFixed(3));
     const en = faixa(f, .44, .56); trilho.style.setProperty('--en', (1 - Math.pow(1 - en, 3)).toFixed(3));
     trilho.style.setProperty('--to', faixa(f, .44, .47).toFixed(3));
-    const pos = faixa(f, .56, .9) * (cards.length - 1), idx = Math.round(pos);
+    const pos = faixa(f, .56, .84) * (cards.length - 2), idx = Math.round(pos);   // quando falta um prato, o ambiente muda
     cards.forEach((el, i) => el.classList.toggle('foco', i === idx));
     const i0 = Math.floor(pos), i1 = Math.min(cards.length - 1, i0 + 1), fr = pos - i0;
     const centro = el => el.offsetLeft + el.offsetWidth / 2;
     trilho.style.setProperty('--tx', (trilho.offsetWidth / 2 - (centro(cards[i0]) + (centro(cards[i1]) - centro(cards[i0])) * fr)).toFixed(1) + 'px');
-    rest.querySelector('.preto').style.setProperty('--po', faixa(f, .93, 1).toFixed(3));
+    rest.querySelector('.preto').style.setProperty('--po', faixa(f, .86, .93).toFixed(3));
   }
   function contar(raiz) {
     raiz.querySelectorAll('[data-n]').forEach((el, i) => {
