@@ -32,7 +32,7 @@ a { color: inherit; }
 .sombra { position: absolute; inset: 0; pointer-events: none; opacity: var(--s, 0);
   background: radial-gradient(70% 90% at 12% 55%, rgba(14,9,6,.72) 0%, rgba(14,9,6,0) 70%), linear-gradient(90deg, rgba(14,9,6,.78) 0%, rgba(14,9,6,.46) 38%, rgba(14,9,6,0) 64%), linear-gradient(180deg, rgba(14,9,6,.5) 0%, rgba(14,9,6,0) 20%, rgba(14,9,6,0) 76%, rgba(14,9,6,.55) 100%); }
 .sombra-dir { position: absolute; inset: 0; pointer-events: none; opacity: var(--s2, 0); background: linear-gradient(270deg, rgba(14,9,6,.74) 0%, rgba(14,9,6,.42) 34%, rgba(14,9,6,0) 58%); }
-.corte { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .35s var(--ease); z-index: 5; }
+.corte { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 1; }
 .corte.on { opacity: 1; }
 
 /* ---------- topo: menu do site ---------- */
@@ -706,7 +706,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
     { para: 'breve', t: 37.55, vh: 100 },
     { move: [37.55, 42.9], vh: 110 },              // um dia na mesa
     { move: [42.9, 48.0], vh: 110 },               // o voo até a praça
-    { para: 'fim', t: 48.0, vh: 90 },
+    { para: 'fim', t: 48.0, vh: 90, fica: true },
   ];
   const filme = $('#filme'), palco = $('#palco'), video = $('#video');
   const sombra = $('#sombra'), sombraDir = $('#sombra-dir'), barra = $('#progresso'), dica = $('#dica'), seguinte = $('#seguinte'), corte = $('#corte');
@@ -751,8 +751,8 @@ html.encaixe { scroll-snap-type: y mandatory; }
     for (const s of ROTEIRO) {
       if (vhPos <= s.ini + s.vh) {
         const f = clamp((vhPos - s.ini) / s.vh);
-        if (s.para) { const o0 = s.paradas ? clamp(Math.min(f / .16, (1 - f) / .16)) : clamp(Math.min((f - .1) / .2, (1 - f) / .2)); const o = o0; const fl = s.flocos === 'entra' ? clamp(f / .22) : s.flocos === 'sai' ? clamp((1 - f) / .22) : s.flocos ? o : 0; return { t: s.t, b: s.para, o, f, fl, para: true }; }
-        if (s.cena) return { t: s.t, b: null, o: 0, cena: s.cena, f };
+        if (s.para) { const o0 = s.fica ? clamp((f - .1) / .2) : s.paradas ? clamp(Math.min(f / .16, (1 - f) / .16)) : clamp(Math.min((f - .1) / .2, (1 - f) / .2)); const o = o0; const fl = s.flocos === 'entra' ? clamp(f / .22) : s.flocos === 'sai' ? clamp((1 - f) / .22) : s.flocos ? o : 0; return { t: s.t, b: s.para, o, f, fl, para: true }; }
+        if (s.cena) return { t: f > .9 ? 24.22 : s.t, b: null, o: 0, cena: s.cena, f };
         const k = s.linear ? f : f * f * (3 - 2 * f), t = s.move[0] + (s.move[1] - s.move[0]) * k;
         if (s.b) return { t, b: s.b, o: 1 - faixa(f, .2, .55), f: .5 };    // a abertura sai enquanto o vídeo anda
         return { t, b: null, o: 0, fl: 0 };
@@ -767,6 +767,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
   function desenha(vh) {
     const e = estado(vh);
     if (e.para && pronto && Math.abs(video.currentTime - Math.min(e.t, video.duration - .05)) > .12) { e.o = 0; e.fl = 0; }
+    corte.style.opacity = (!e.cena && e.t >= 24.2 && e.t < 24.8 && pronto && video.currentTime < 24.15) ? 1 : (!e.cena && e.t >= 24.2 && e.t < 24.8 ? 1 - faixa(e.t, 24.22, 24.75) : 0);
     for (const k in batidas) {
       const o = e.b === k ? e.o : 0, el = batidas[k];
       el.style.setProperty('--o', o.toFixed(3));
@@ -830,58 +831,94 @@ html.encaixe { scroll-snap-type: y mandatory; }
       requestAnimationFrame(passo);
     });
   }
+  // motor da câmera: no scroll livre (desktop) a cena segue o scroll com amortecimento; em clique, menu,
+  // setas e gestos do celular ela anda numa curva (Hermite) que parte da velocidade atual, acelera e
+  // desacelera até parar no quadro, sem pular quadros nem cortar pelo preto
+  let vel = 0, curva = null;
+  const duracao = d => clamp(.95 + d / 230, 1.05, 3.6) * 1000;   // ms: mais longe, mais tempo, sem correr
+  function andarAte(x1) {
+    const d = Math.abs(x1 - mostrado); if (d < .3 && !curva) { alvo = mostrado = x1; return; }
+    curva = { x0: mostrado, v0: vel, x1, t0: performance.now(), D: duracao(d) }; alvo = x1;
+    if (!raf) raf = requestAnimationFrame(quadro);
+  }
   function quadro(agora) {
     const dt = Math.min(100, agora - (ultimo || agora)); ultimo = agora;
-    let passo = (alvo - mostrado) * (1 - Math.pow(1 - (viajando ? .18 : .07), dt / 16.667));
-    if (toque) { const max = 230 * dt / 1000; passo = clamp(passo, -max, max); }   // até ~2,3 telas por segundo
-    mostrado += passo;
-    if (Math.abs(alvo - mostrado) < 0.05) mostrado = alvo;
+    const antes = mostrado;
+    if (curva) {
+      const D = curva.D / 1000, u = clamp((agora - curva.t0) / curva.D), u2 = u * u, u3 = u2 * u;
+      mostrado = (2 * u3 - 3 * u2 + 1) * curva.x0 + (u3 - 2 * u2 + u) * D * curva.v0 + (-2 * u3 + 3 * u2) * curva.x1;
+      if (u >= 1) { mostrado = curva.x1; curva = null; }
+    } else {
+      mostrado += (alvo - mostrado) * (1 - Math.pow(1 - .07, dt / 16.667));
+      if (Math.abs(alvo - mostrado) < 0.05) mostrado = alvo;
+    }
+    vel = dt > 0 ? (mostrado - antes) / (dt / 1000) : 0;
     const t = desenha(mostrado);
     if (pronto && !buscando && Math.abs(video.currentTime - t) > 0.02) { buscando = true; video.currentTime = Math.min(t, video.duration - 0.05); }
-    if (mostrado !== alvo) raf = requestAnimationFrame(quadro); else { raf = null; ultimo = 0; }
+    if (curva || mostrado !== alvo) raf = requestAnimationFrame(quadro); else { raf = null; ultimo = 0; vel = 0; }
   }
   video.addEventListener('seeked', () => { buscando = false; if (!raf) raf = requestAnimationFrame(quadro); });
-  function aoRolar() { alvo = posVh(); if (!raf) raf = requestAnimationFrame(quadro); clearTimeout(aoRolar.g); aoRolar.g = setTimeout(() => { if (mostrado !== alvo) { mostrado = alvo; quadro(performance.now()); } }, 900); }
+  function aoRolar() {
+    const p = posVh();
+    if (curva && Math.abs(p - curva.x1) < 1) return;   // o scroll foi posto no destino da curva: deixa a curva andar
+    if (toque && controlando) return;
+    curva = null; alvo = p; if (!raf) raf = requestAnimationFrame(quadro);
+  }
   addEventListener('scroll', aoRolar, { passive: true });
 
-  // ímã suave: só puxa para a frente, na direção em que o visitante rola, e nunca devolve para um texto já passado
-  let imaT = null, imaAndando = false, ultimaPos = 0, direcao = 0, viajando = false;
+  // desktop: ímã suave, só para a frente, na direção em que o visitante rola
+  let imaT = null, imaAndando = false, ultimaPos = 0, direcao = 0;
   function ima() {
-    if (viajando || toque) return;   // no toque quem para é o encaixe nativo
+    if (toque || curva) return;
     if (imaAndando) { imaAndando = false; return; }
     const v = posVh(); let melhor = null, d = 14;
     for (const p of paradas) { const dist = (p - v) * direcao; if (dist > .5 && dist < d) { d = dist; melhor = p; } }
-    if (melhor !== null) { imaAndando = true; scrollTo({ top: topoDe(melhor), behavior: 'smooth' }); }
+    if (melhor !== null) { imaAndando = true; scrollTo(0, topoDe(melhor)); andarAte(melhor); }
   }
   addEventListener('scroll', () => {
     const v = posVh(); if (Math.abs(v - ultimaPos) > .2) { direcao = Math.sign(v - ultimaPos); ultimaPos = v; }
     clearTimeout(imaT); imaT = setTimeout(ima, 260);
   }, { passive: true });
-  ['wheel', 'touchstart'].forEach(ev => addEventListener(ev, () => { imaAndando = false; if (viajando) viajando = false; }, { passive: true }));
+  addEventListener('wheel', () => { imaAndando = false; curva = null; }, { passive: true });
   addEventListener('resize', () => { if (innerWidth !== larguraU || (!toque && innerHeight !== U)) { const v = posVh(); larguraU = innerWidth; U = innerHeight; mede(); scrollTo(0, topoDe(v)); } aoRolar(); });
 
-  // navegação por clique: menu, botão "Próximo" e setas levam a câmera até a parada com velocidade controlada
   function topoDe(vh) { return filme.offsetTop + vh * U / 100; }
-  const suave = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  async function viajar(vhAlvo) {
-    const de = posVh(), dist = Math.abs(vhAlvo - de);
-    if (dist < 1) return;
-    if (dist > 450) {   // longe: corta pelo preto em vez de passar o filme inteiro correndo
-      corte.classList.add('on'); await new Promise(r => setTimeout(r, 380));
-      scrollTo(0, topoDe(vhAlvo)); alvo = mostrado = vhAlvo; desenha(vhAlvo);
-      if (pronto) { buscando = true; video.currentTime = Math.min(estado(vhAlvo).t, video.duration - .05); }
-      await new Promise(r => setTimeout(r, 420)); corte.classList.remove('on'); return;
-    }
-    if (toque) { scrollTo({ top: topoDe(vhAlvo), behavior: 'smooth' }); return; }   // o encaixe cuida do resto
-    viajando = true; const dur = clamp(dist * 9, 700, 2600), t0 = performance.now(), y0 = scrollY, y1 = topoDe(vhAlvo);
-    await new Promise(fim => {
-      const passo = agora => {
-        if (!viajando) return fim();
-        const k = clamp((agora - t0) / dur); scrollTo(0, y0 + (y1 - y0) * suave(k));
-        if (k < 1) requestAnimationFrame(passo); else { viajando = false; fim(); }
-      };
-      requestAnimationFrame(passo);
-    });
+  // clique (menu, "Próximo", setas): o scroll vai direto ao destino e a câmera percorre a curva até lá
+  function viajar(vhAlvo) { scrollTo(0, topoDe(vhAlvo)); andarAte(vhAlvo); }
+
+  // celular: o próprio gesto conduz. Arrastar pouco só puxa a cena (com resistência) e ela volta;
+  // arrastar decidido (12% da tela ou um gesto rápido) leva à próxima parada pela curva.
+  // Na última parada, puxar para cima libera o scroll normal até o rodapé.
+  let controlando = false, y0 = 0, t0g = 0, base = 0, dyG = 0, decidido = false, rastro = [];
+  const ultimo_ = () => encaixes.length - 1;
+  const maisPerto = v => encaixes.reduce((m, p, i) => Math.abs(p - v) < Math.abs(encaixes[m] - v) ? i : m, 0);
+  if (toque) {
+    addEventListener('touchstart', e => {
+      if (e.touches.length > 1 || document.body.classList.contains('menu-aberto') || scrollY > topoDe(encaixes[ultimo_()]) + 4) { controlando = false; return; }
+      controlando = true; decidido = false; y0 = e.touches[0].clientY; t0g = performance.now(); dyG = 0; rastro = [[t0g, y0]];
+      base = maisPerto(curva ? curva.x1 : posVh());
+    }, { passive: true });
+    addEventListener('touchmove', e => {
+      if (!controlando) return;
+      dyG = y0 - e.touches[0].clientY;   // positivo: avançar
+      rastro.push([performance.now(), e.touches[0].clientY]); if (rastro.length > 6) rastro.shift();
+      if (!decidido && Math.abs(dyG) > 6) { decidido = true; if (base === ultimo_() && dyG > 0) { controlando = false; return; } }
+      e.preventDefault();
+      // prévia com resistência: a cena acompanha o dedo a 22%, sem sair da parada
+      curva = null; alvo = clamp(encaixes[base] + dyG / U * 100 * .22, 0, total); if (!raf) raf = requestAnimationFrame(quadro);
+    }, { passive: false });
+    addEventListener('touchend', () => {
+      if (!controlando) { clearTimeout(aoSoltar.t); aoSoltar.t = setTimeout(aoSoltar, 220); return; }
+      controlando = false;
+      // velocidade no fim do gesto (últimos ~100 ms): um peteleco rápido também avança
+      const ag = performance.now(), r = rastro.filter(x => ag - x[0] < 140), a0 = r[0] || rastro[0], a1 = rastro[rastro.length - 1];
+      const v = a0 && a1 && a1[0] > a0[0] ? (a0[1] - a1[1]) / (a1[0] - a0[0]) : 0;   // px/ms, positivo: avançar
+      const passo = (dyG > U * .12 || (v > .3 && dyG > 24)) ? 1 : (dyG < -U * .12 || (v < -.3 && dyG < -24)) ? -1 : 0;
+      const novo = clamp(base + passo, 0, ultimo_());
+      scrollTo(0, topoDe(encaixes[novo])); andarAte(encaixes[novo]);
+    }, { passive: true });
+    // voltando do rodapé com o scroll normal: ao parar dentro do filme, assenta na parada mais próxima
+    function aoSoltar() { const v = posVh(); if (v > 0 && v < encaixes[ultimo_()] - 1 && !curva) { const p = encaixes[maisPerto(v)]; scrollTo(0, topoDe(p)); andarAte(p); } }
   }
   const proxima = dir => { const v = posVh(), lista = toque ? encaixes : paradas; return dir > 0 ? lista.find(p => p > v + 2) : [...lista].reverse().find(p => p < v - 2) ?? 0; };
   seguinte.addEventListener('click', () => { const p = proxima(1); if (p !== undefined) viajar(p); });
@@ -941,10 +978,9 @@ html.encaixe { scroll-snap-type: y mandatory; }
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   scrollTo(0, 0);
   // o encaixe só liga depois que as paradas existem e a página está no topo (senão o navegador gruda no rodapé)
-  if (toque) requestAnimationFrame(() => { scrollTo(0, 0); document.documentElement.classList.add('encaixe'); });
   aoRolar();
   setTimeout(tiraCarregador, 25000);   // último recurso: rede lenta ou travada
-  window.__prototipo = { total, ROTEIRO, paradas, pontoDe, viajar, ir: vh => { scrollTo(0, topoDe(vh)); } };
+  window.__prototipo = { total, ROTEIRO, paradas, encaixes, pontoDe, viajar, get m() { return mostrado; }, ir: vh => { scrollTo(0, topoDe(vh)); } };
 })();
 </script>
 </body>
