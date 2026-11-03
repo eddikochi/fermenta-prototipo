@@ -36,6 +36,7 @@ a { color: inherit; }
 .corte.on { opacity: 1; }
 
 /* ---------- topo: menu do site ---------- */
+.no-rodape .topo { background: rgba(20,13,9,.96); backdrop-filter: blur(10px); padding-bottom: 16px; }
 .topo { position: fixed; left: 0; right: 0; top: 0; z-index: 40; display: flex; align-items: center; gap: 26px; padding: 16px var(--g) 22px; background: linear-gradient(180deg, rgba(14,9,6,.92), rgba(14,9,6,.6) 55%, rgba(14,9,6,0)); }
 .marca { display: grid; text-decoration: none; line-height: 1; margin-right: auto; }
 .marca b { font: 230 19px/1 var(--f-titulo); letter-spacing: .34em; color: var(--blush); }
@@ -57,11 +58,12 @@ a { color: inherit; }
   .nav { display: none; }
   .menu-btn { display: inline-flex; padding: 0 16px; }
   .topo .btn.cheio { padding: 0 14px; }
-  .menu-lista { position: fixed; inset: 0; z-index: 39; display: grid; align-content: center; gap: 6px; padding: 80px var(--g); background: rgba(20,12,8,.96); opacity: 0; visibility: hidden; transition: opacity .35s var(--ease), visibility 0s .35s; }
+  .menu-lista { position: fixed; inset: 0; z-index: 39; display: grid; align-content: center; gap: 6px; padding: 80px var(--g); background: rgb(20,12,8); opacity: 0; visibility: hidden; transition: opacity .35s var(--ease), visibility 0s .35s; }
   .menu-aberto .menu-lista { opacity: 1; visibility: visible; transition: opacity .35s var(--ease); }
   .menu-lista a { font: 230 34px/1.25 var(--f-titulo); letter-spacing: 0; text-transform: none; color: var(--texto); }
 }
-@media (max-width: 420px) { .topo { gap: 10px; } .topo .btn.cheio span { display: none; } }
+@media (max-width: 760px) { .topo .btn.cheio span { display: none; } }
+@media (max-width: 420px) { .topo { gap: 10px; } }
 
 /* ---------- batidas: aparecem quando o vídeo para ---------- */
 .batida { position: absolute; inset: 0; opacity: var(--o, 0); pointer-events: none; transition: opacity .3s linear; }
@@ -69,6 +71,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
 .encaixe .ancora { scroll-snap-align: start; scroll-snap-stop: always; }
 .encaixe .rodape { scroll-snap-align: start; }
 .txt { position: absolute; left: var(--g); top: 50%; width: min(560px, 44vw); transform: translate(var(--x, 0px), calc(-50% + var(--y, 18px))); text-shadow: 0 1px 2px rgba(10,6,4,.45), 0 6px 34px rgba(10,6,4,.7); }
+.nw { white-space: nowrap; }
 .rotulo { display: block; font: 300 11px/1.4 var(--f-rotulo); letter-spacing: .14em; text-transform: uppercase; color: var(--rosa); margin-bottom: 16px; }
 .txt h1, .txt h2 { font: 230 clamp(26px, 3vw, 42px)/1.14 var(--f-titulo); font-variation-settings: 'SOFT' 100; margin: 0; letter-spacing: -.01em; }
 .txt h1 { font-size: clamp(32px, 3.8vw, 54px); }
@@ -303,7 +306,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
 /* ---------- celular ---------- */
 @media (max-width: 760px) {
   .txt { top: auto; bottom: 12vh; width: auto; right: var(--g); transform: translate(var(--x, 0px), var(--y, 18px)); }
-  .ficha .txt { bottom: 8vh; width: auto; }
+  .ficha .txt { bottom: max(8vh, 66px); width: auto; }
   .ficha .painel { padding: 16px; }
   .passos { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .sombra { background: linear-gradient(0deg, rgba(14,9,6,.95) 0%, rgba(14,9,6,.82) 36%, rgba(14,9,6,.4) 60%, rgba(14,9,6,0) 82%), linear-gradient(180deg, rgba(14,9,6,.55) 0%, rgba(14,9,6,0) 16%); }
@@ -313,9 +316,13 @@ html.encaixe { scroll-snap-type: y mandatory; }
   .camadas-m { position: absolute; left: var(--g); right: var(--g); top: 72px; height: 44vh; }
   .camadas-m > .camada { top: auto !important; right: auto !important; --d: .4 !important; }
   .dc-fotos { right: auto; left: 50%; top: 76px; width: min(44vw, 34vh * .75); transform: translateX(-50%); }
-  .dc-conta { top: calc(100% + 10px); }
+  .dc-conta { top: calc(100% + 10px); width: max-content; white-space: nowrap; }
+  .dc-foto figcaption { left: 8px; bottom: 8px; white-space: nowrap; font-size: 9px; padding: 5px 7px; }
+  .mapa .nota .longo { display: none; }
   .linha-casas { left: var(--g); right: var(--g); top: 84px; width: auto; transform: none; }
   .lista { left: var(--g); right: var(--g); top: 76px; width: auto; transform: translateY(var(--y, 18px)); padding: 14px 16px 2px; background: rgba(18,12,8,.88); }
+  .compacta .lista p, .compacta .linha-casas span { display: none; } .compacta .lista li { padding: 8px 0 7px; }
+  .compacta2 .txt p { display: none; }
   .lista li { padding: 11px 0 10px; grid-template-columns: 30px 1fr; } .lista b { font-size: 17px; } .lista p { font-size: 13px; margin-top: 2px; } .lista small { display: none; }
   .linha-casas li { padding-bottom: 14px; } .linha-casas b { font-size: 18px; }
   .rest-rotulo { top: calc(46% - 1.6em - 26vw); }
@@ -326,12 +333,15 @@ html.encaixe { scroll-snap-type: y mandatory; }
   .moldura, .trilho { top: 42%; }
   .fim .grade { grid-template-columns: minmax(0, 1fr); top: 80px; bottom: 52px; align-content: end; gap: 10px; }
   .fim h2 { font-size: 26px; } .fim .rotulo { margin-top: 6px; margin-bottom: 10px; } .fim .sub { margin-bottom: 10px; font-size: 15px; }
-  .mapa { grid-row: 1; aspect-ratio: auto; height: clamp(120px, 22vh, 200px); }
+  .mapa { grid-row: 1; aspect-ratio: auto; height: clamp(150px, 22vh, 200px); }
   .flocos i:nth-child(2n) { display: none; }
-  .casa { padding: 9px 14px; }
-  @media (max-height: 760px) { .fim .sub { display: none; } .mapa { height: 18vh; } }
+  .casa { padding: 9px 14px; gap: 2px 10px; }
+  .casa em { font-size: 0; gap: 0; } .casa em svg { width: 18px; height: 18px; }
+  .mapa .nota { left: 12px; top: 10px; bottom: auto; }
+  .fim.compacta .sub { display: none; } .fim.compacta2 .mapa { height: 120px; }
+  @media (max-height: 760px) { .fim .sub { display: none; } }
  .casa b { font-size: 18px; } .casa > span { font-size: 13px; }
-  .aviso { bottom: 12px; right: 124px; font-size: 9px; padding: 5px 10px; }
+  .aviso { bottom: 14px; right: auto; max-width: calc(100vw - 2 * var(--g) - 112px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 9px; letter-spacing: .03em; padding: 5px 10px; }
   .aviso .longo { display: none; }
   .navega { bottom: 8px; gap: 8px; }
   .navega .btn { min-height: 40px; padding: 0 14px; }
@@ -395,7 +405,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
 
     <!-- abertura: já está na tela quando a página abre -->
     <section class="batida" data-b="abertura">
-      <div class="txt"><span class="rotulo">Fermenta · pão e cozinha · Porto Alegre</span><h1 class="partir">Antes de abrir a porta, a massa já está trabalhando.</h1></div>
+      <div class="txt"><span class="rotulo"><span class="nw">Fermenta · pão e cozinha</span> <span class="nw">· Porto Alegre</span></span><h1 class="partir">Antes de abrir a porta, a massa já está trabalhando.</h1></div>
     </section>
 
     <!-- DC Navegantes: fotos reais da casa -->
@@ -547,7 +557,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
             <g class="pino" data-casa="c24" style="--i:1; --cor:var(--laranja)"><circle class="halo" cx="292" cy="140" r="10"/><circle class="ponto" cx="292" cy="140" r="6.5"/><text x="248" y="164">24 de Outubro</text></g>
             <g class="pino" data-casa="praca" style="--i:2; --cor:var(--mostarda)"><circle class="halo" cx="146" cy="206" r="10"/><circle class="ponto" cx="146" cy="206" r="6.5"/><text x="160" y="226">Praça Otávio Rocha</text></g>
           </svg>
-          <span class="nota">Mapa ilustrativo · fora de escala</span>
+          <span class="nota">Mapa ilustrativo<span class="longo"> · fora de escala</span></span>
         </div>
       </div>
     </section>
@@ -745,6 +755,37 @@ html.encaixe { scroll-snap-type: y mandatory; }
     ancoras.forEach(a => { a.style.top = (+a.dataset.vh * U / 100) + 'px'; });
   }
   mede();
+  // celular: nada sobrepõe. Mede o espaço entre o topo da tela e o texto de cada batida e encaixa ali
+  // as fotos do DC (encolhem) e as listas (perdem as descrições, depois o parágrafo sai) e, nas sedes,
+  // o mapa (perde a frase de apoio, depois encolhe). O mapa recorta na região dos pinos.
+  const mapaSvg = palco.querySelector('.mapa svg');
+  function encaixaCelular() {
+    const cel = innerWidth <= 760;
+    mapaSvg.setAttribute('viewBox', cel ? '40 56 365 182' : '0 0 400 300');
+    palco.querySelectorAll('.batida').forEach(b => b.classList.remove('compacta', 'compacta2'));
+    const fotos = batidas.dc.querySelector('.dc-fotos'); fotos.style.width = '';
+    if (!cel) return;
+    const folga = 16;
+    const livre = el => el.offsetTop - folga;   // offsetTop ignora as transformações de entrada
+    // DC: a foto e o contador cabem acima do texto; se a foto ficaria pequena demais, o parágrafo sai
+    const natural = fotos.offsetWidth, txtDc = batidas.dc.querySelector('.txt');
+    const larg = () => Math.min(natural, (livre(txtDc) - fotos.offsetTop - 34) * .75);
+    if (larg() < 130) batidas.dc.classList.add('compacta2');
+    fotos.style.width = Math.max(100, larg()).toFixed(0) + 'px';
+    // listas por cima do texto
+    ['tarde', 'eventos', 'breve'].forEach(k => {
+      const b = batidas[k], cima = b.querySelector('.lista, .linha-casas'), txt = b.querySelector('.txt');
+      const bate = () => cima.offsetTop + cima.offsetHeight > livre(txt);
+      if (bate()) b.classList.add('compacta');
+      if (bate()) b.classList.add('compacta2');
+    });
+    // sedes: a grade inteira cabe entre o topo e os botões
+    const mapa = batidas.fim.querySelector('.mapa'), sobra = () => mapa.offsetTop < 0;   // a grade alinha embaixo: o excesso vaza por cima
+    if (sobra()) batidas.fim.classList.add('compacta');
+    if (sobra()) batidas.fim.classList.add('compacta2');
+  }
+  encaixaCelular();
+  if (document.fonts) document.fonts.ready.then(encaixaCelular);
   const pontoDe = id => {
     if (id === 'inicio') return 0;
     const s = ROTEIRO.find(x => x.para === id || x.cena === id); if (!s) return 0;
@@ -852,7 +893,9 @@ html.encaixe { scroll-snap-type: y mandatory; }
   }
   function andarAte(x1) {
     const d = Math.abs(x1 - mostrado); if (d < .3 && !curva) { alvo = mostrado = x1; return; }
-    const L = tempoLento(mostrado, x1), D = L.ms ? Math.max(duracao(d), L.ms + (d - L.vhL) / 230 * 1000 + 300) : duracao(d);
+    // o ritmo só vale de uma parada à seguinte; saltos pelo menu ou por link (passam por outras paradas) vão rápidos
+    const i0 = Math.min(mostrado, x1), i1 = Math.max(mostrado, x1), salto = encaixes.some(p => p > i0 + 1 && p < i1 - 1);
+    const L = tempoLento(mostrado, x1), D = L.ms && !salto ? Math.max(duracao(d), L.ms + (d - L.vhL) / 230 * 1000 + 300) : duracao(d);
     curva = { x0: mostrado, v0: vel, x1, t0: performance.now(), D }; alvo = x1;
     if (!raf) raf = requestAnimationFrame(quadro);
   }
@@ -880,6 +923,8 @@ html.encaixe { scroll-snap-type: y mandatory; }
     curva = null; alvo = p; if (!raf) raf = requestAnimationFrame(quadro);
   }
   addEventListener('scroll', aoRolar, { passive: true });
+  const rodape = $('#rodape');
+  addEventListener('scroll', () => document.body.classList.toggle('no-rodape', rodape.getBoundingClientRect().top < 80), { passive: true });
 
   // desktop, rede de segurança (barra de rolagem, Home/End): ao parar dentro do filme, assenta na parada mais próxima
   let imaT = null, imaAndando = false;
@@ -918,7 +963,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
     const base = maisPerto(curva ? curva.x1 : posVh()), novo = clamp(base + Math.sign(acumW), 0, ultimo_());
     if (novo !== base) viajar(encaixes[novo]);
   }, { passive: false });
-  addEventListener('resize', () => { if (innerWidth !== larguraU || (!toque && innerHeight !== U)) { const v = posVh(); larguraU = innerWidth; U = innerHeight; mede(); scrollTo(0, topoDe(v)); } aoRolar(); });
+  addEventListener('resize', () => { if (innerWidth !== larguraU || (!toque && innerHeight !== U)) { const v = posVh(); larguraU = innerWidth; U = innerHeight; mede(); encaixaCelular(); scrollTo(0, topoDe(v)); } aoRolar(); });
 
   function topoDe(vh) { return filme.offsetTop + vh * U / 100; }
   // clique (menu, "Próximo", setas): o scroll vai direto ao destino e a câmera percorre a curva até lá
