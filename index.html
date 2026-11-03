@@ -34,6 +34,16 @@ a { color: inherit; }
 .sombra-dir { position: absolute; inset: 0; pointer-events: none; opacity: var(--s2, 0); background: linear-gradient(270deg, rgba(14,9,6,.74) 0%, rgba(14,9,6,.42) 34%, rgba(14,9,6,0) 58%); }
 .corte { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 1; }
 .corte.on { opacity: 1; }
+.flash { position: absolute; inset: 0; background: #0b0705; opacity: 0; pointer-events: none; z-index: 1; }
+.flash.on { animation: pisca .42s var(--ease); }
+@keyframes pisca { 30% { opacity: 1; } 55% { opacity: 1; } 100% { opacity: 0; } }
+.gire { display: none; }
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  .gire { position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 18px; background: #140c08; color: var(--texto); font: 400 11px/1.4 var(--f-rotulo); letter-spacing: .12em; text-transform: uppercase; text-align: center; }
+  .gire svg { width: 54px; height: 54px; stroke: var(--rosa); fill: none; stroke-width: 1.4; animation: gira 2.4s var(--ease) infinite; }
+  @keyframes gira { 0%, 30% { transform: rotate(90deg); } 60%, 100% { transform: rotate(0deg); } }
+}
+.diag { position: fixed; left: 8px; top: 76px; z-index: 300; font: 400 11px/1.5 ui-monospace, monospace; color: #fff; background: rgba(0,0,0,.75); padding: 6px 9px; border-radius: 6px; pointer-events: none; white-space: pre; }
 
 /* ---------- topo: menu do site ---------- */
 .no-rodape .topo { background: rgba(20,13,9,.96); backdrop-filter: blur(10px); padding-bottom: 16px; }
@@ -347,6 +357,12 @@ html.encaixe { scroll-snap-type: y mandatory; }
   .navega .btn { min-height: 40px; padding: 0 14px; }
   .navega span { display: none; }
   .dica { display: none; }
+  /* sem vidro no celular: o desfoque de fundo refeito a cada quadro do vídeo pesa no iPhone. Fundo escuro no lugar */
+  .btn, .chips li, .lista, .ficha .painel, .moldura, .casa, .mapa, .no-rodape .topo { backdrop-filter: none; }
+  .btn { background: rgba(26,17,12,.72); } .chips li { background: rgba(26,17,12,.74); }
+  .ficha .painel { background: rgba(26,17,12,.86); } .casa { background: rgba(28,18,12,.9); } .mapa { background: rgba(28,18,12,.9); }
+  .moldura { background: rgba(14,9,6,.25); }
+  .flocos i { filter: none; } .flocos i:nth-child(3n) { display: none; }
 }
 </style>
 </head>
@@ -370,6 +386,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
   <span class="massa">(Massa = <b id="pct">0%</b>)</span>
 </div>
 
+<div class="gire" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.2"/><path d="M11 18.5h2"/></svg>Gire o celular para ver em pé</div>
 <header class="topo" id="topo">
   <a class="marca" href="#inicio" data-ir="inicio" aria-label="Fermenta, voltar ao início"><b>FERMENTA</b><small>pão e cozinha</small></a>
   <nav class="nav" aria-label="Seções">
@@ -563,6 +580,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
     </section>
 
     <div class="corte" id="corte"></div>
+    <div class="flash" id="flash"></div>
     <span class="aviso">Protótipo<span class="longo"> conceitual</span> · não é o site oficial<span class="longo"> da Fermenta</span></span>
     <span class="dica" id="dica">Role para continuar</span>
     <div class="navega">
@@ -694,7 +712,9 @@ html.encaixe { scroll-snap-type: y mandatory; }
     setTimeout(tiraCarregador, 4000);   // rede de segurança: o carregador nunca fica na frente se a animação parar
   }
 
-  const URL_VIDEO = 'assets/filme.mp4', BYTES = 12423669, DURACAO = 48.042;
+  // celular em pé: vídeo vertical próprio (1080 de altura, recorte que segue o assunto de cada cena, 1/3 do peso)
+  const videoCel = matchMedia('(pointer: coarse)').matches && innerWidth / innerHeight < .8;
+  const URL_VIDEO = videoCel ? 'assets/filme-celular.mp4' : 'assets/filme.mp4', BYTES = videoCel ? 4464480 : 12423669, DURACAO = 48.042;
   // o roteiro: o vídeo anda (move) e para quando o texto entra (para). vh = distância de scroll.
   // Os pontos de parada são os quadros em que cada animação do vídeo termina (medidos quadro a quadro);
   // depois que o texto sai, o corte para o próximo ambiente é seco (linear, curto).
@@ -846,7 +866,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
     const c = t < 5 ? .5 : t < 6.2 ? .5 - .16 * sm((t - 5) / 1.2) : t < 10.17 ? .34 : t < 13.42 ? .34 + .16 * sm((t - 10.17) / 3.25) : .5;
     const wr = Math.max(innerWidth, innerHeight * 16 / 9), sobra = wr - innerWidth;
     const pc = sobra < 1 ? 50 : clamp((c * wr - innerWidth / 2) / sobra) * 100;
-    const v = pc.toFixed(2) + '% 50%'; if (video.style.objectPosition !== v) { video.style.objectPosition = v; poster.style.backgroundPosition = v; }
+    const v = pc.toFixed(2) + '% 50%'; if (poster.style.backgroundPosition !== v) { poster.style.backgroundPosition = v; if (!videoCel) video.style.objectPosition = v; }
   }
   const rest = $('#rest'), trilho = $('#trilho'), cards = [...trilho.children];
   function cenaRest(f) {
@@ -897,7 +917,36 @@ html.encaixe { scroll-snap-type: y mandatory; }
     const i0 = Math.min(mostrado, x1), i1 = Math.max(mostrado, x1), salto = encaixes.some(p => p > i0 + 1 && p < i1 - 1);
     const L = tempoLento(mostrado, x1), D = L.ms && !salto ? Math.max(duracao(d), L.ms + (d - L.vhL) / 230 * 1000 + 300) : duracao(d);
     curva = { x0: mostrado, v0: vel, x1, t0: performance.now(), D }; alvo = x1;
+    if (toque && pronto && (x1 < mostrado || salto)) corteAte(estado(x1).t);
     if (!raf) raf = requestAnimationFrame(quadro);
+  }
+  // celular: o vídeo toca de verdade entre as paradas (buscar quadro a quadro trava no iPhone). Ele persegue o
+  // tempo que a câmera pede: acompanha a velocidade dela, corrige a diferença e para quando chega. Voltar ou
+  // saltar pelo menu (vídeo não toca de trás para frente) é um corte rápido: escurece, vai direto e reabre.
+  // Se o iPhone bloquear o play (Modo Pouca Energia), volta à busca quadro a quadro.
+  let semPlay = false, tAnt = null, taxa = 1, fixo = null;
+  const flash = $('#flash');
+  function corteAte(t) {
+    fixo = Math.min(t, video.duration - .05); if (!video.paused) video.pause();
+    flash.classList.remove('on'); void flash.offsetWidth; flash.classList.add('on');
+    setTimeout(() => { buscando = true; video.currentTime = fixo; }, 120);
+  }
+  function persegue(t, dt) {
+    if (fixo !== null) { if (curva) return true; fixo = null; }
+    const alvoT = Math.min(t, video.duration - .05), err = alvoT - video.currentTime;
+    const vT = tAnt === null || dt <= 0 ? 0 : (alvoT - tAnt) / (dt / 1000); tAnt = alvoT;
+    if (semPlay || err > 1.5 || err < -.15) {
+      if (!video.paused) video.pause();
+      if (!buscando && Math.abs(err) > .02) { buscando = true; video.currentTime = alvoT; }
+      return false;
+    }
+    let r = vT + err * 2.5;
+    if (err > .04 && r < .3) r = .3;
+    if (r < .08 || (err <= .04 && vT < .05)) { if (!video.paused) video.pause(); tAnt = curva ? tAnt : null; return err > .04 || curva !== null; }
+    r = clamp(r, .25, 4);
+    if (Math.abs(r - taxa) / taxa > .08) { video.playbackRate = taxa = r; }
+    if (video.paused) video.play().catch(() => { semPlay = true; });
+    return true;
   }
   function quadro(agora) {
     const dt = Math.min(100, agora - (ultimo || agora)); ultimo = agora;
@@ -912,8 +961,10 @@ html.encaixe { scroll-snap-type: y mandatory; }
     }
     vel = dt > 0 ? (mostrado - antes) / (dt / 1000) : 0;
     const t = desenha(mostrado);
-    if (pronto && !buscando && Math.abs(video.currentTime - t) > 0.02) { buscando = true; video.currentTime = Math.min(t, video.duration - 0.05); }
-    if (curva || mostrado !== alvo) raf = requestAnimationFrame(quadro); else { raf = null; ultimo = 0; vel = 0; }
+    let segue = false;
+    if (pronto && toque) segue = persegue(t, dt);
+    else if (pronto && !buscando && Math.abs(video.currentTime - t) > 0.02) { buscando = true; video.currentTime = Math.min(t, video.duration - 0.05); }
+    if (curva || mostrado !== alvo || segue) raf = requestAnimationFrame(quadro); else { raf = null; ultimo = 0; vel = 0; tAnt = null; }
   }
   video.addEventListener('seeked', () => { buscando = false; if (!raf) raf = requestAnimationFrame(quadro); });
   function aoRolar() {
@@ -1064,6 +1115,19 @@ html.encaixe { scroll-snap-type: y mandatory; }
   // o encaixe só liga depois que as paradas existem e a página está no topo (senão o navegador gruda no rodapé)
   aoRolar();
   setTimeout(tiraCarregador, 25000);   // último recurso: rede lenta ou travada
+  // ?diag no endereço: mostra na tela a fluidez real do vídeo (quadros por segundo na última viagem) e o modo do motor
+  if (/[?&]diag\b/.test(location.search) && video.requestVideoFrameCallback) {
+    const caixa = document.createElement('div'); caixa.className = 'diag'; document.body.appendChild(caixa);
+    let q = 0, ms = 0, ult = 0, viagem = null, emViagem = false;
+    const conta = (agora) => { if (curva) q++; video.requestVideoFrameCallback(conta); }; video.requestVideoFrameCallback(conta);
+    setInterval(() => {
+      const agora = performance.now();
+      if (curva) { if (!emViagem) { emViagem = true; q = 0; ms = 0; } ms += agora - (ult || agora); }
+      else if (emViagem) { emViagem = false; viagem = ms > 300 ? q / (ms / 1000) : viagem; }
+      ult = agora;
+      caixa.textContent = `última viagem: ${viagem === null ? '—' : viagem.toFixed(0) + ' quadros/s'}\nmotor: ${toque ? (semPlay ? 'busca (play bloqueado)' : 'vídeo tocando') : 'busca'}\narquivo: ${URL_VIDEO.split('/').pop()}`;
+    }, 100);
+  }
   window.__prototipo = { total, ROTEIRO, paradas, encaixes, pontoDe, viajar, get m() { return mostrado; }, ir: vh => { scrollTo(0, topoDe(vh)); } };
 })();
 </script>
