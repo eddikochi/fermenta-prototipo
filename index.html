@@ -195,6 +195,8 @@ html.encaixe { scroll-snap-type: y mandatory; }
 .rest-legenda p { margin: 10px 0 18px; color: var(--texto-2); font-size: 15px; font-weight: 300; }
 .rest-legenda small { font: 400 10.5px var(--f-rotulo); letter-spacing: .1em; color: var(--rosa); text-transform: uppercase; }
 .preto { position: absolute; inset: 0; z-index: 4; background: #000; opacity: var(--po, 0); }
+.dica-lado { display: none; }
+@media (pointer: coarse) and (max-width: 760px) { .dica-lado { display: block; position: absolute; z-index: 3; left: 0; right: 0; text-align: center; top: calc(42% + 46.7vw + 14px); opacity: var(--mo, 0); font: 400 10.5px var(--f-rotulo); letter-spacing: .1em; text-transform: uppercase; color: var(--texto-2); } }
 
 /* ---------- linha da expansão (forno → praça) ---------- */
 .linha-casas { position: absolute; right: var(--g); top: 50%; transform: translateY(-50%); width: min(420px, 36vw); display: grid; gap: 0; }
@@ -491,6 +493,7 @@ html.encaixe { scroll-snap-type: y mandatory; }
         <div class="card" style="--i:4; background-image:url('assets/pratos/p4-pao-fermentacao.jpg')"><span>Pão de fermentação natural</span></div>
         <div class="card" style="--i:5; background-image:url('assets/pratos/p6-torta.jpg')"><span>Do forno para o balcão</span></div>
       </div>
+      <span class="dica-lado" aria-hidden="true">← deslize para ver os pratos →</span>
       <div class="preto"></div>
     </div>
 
@@ -769,6 +772,13 @@ html.encaixe { scroll-snap-type: y mandatory; }
   const quadros = [ROTEIRO[2].ini];
   const encaixes = [0, ...paradas, ...quadros].sort((a, b) => a - b);
   paradas.sort((a, b) => a - b);
+  // celular: os pratos do almoço andam de lado (deslizar), e o gesto vertical e o "Próximo" pulam para o trecho seguinte
+  const sR = ROTEIRO.find(s => s.cena === 'rest');
+  const pratos = sR.paradas.slice(1).map(k => sR.ini + sR.vh * k);
+  const noCarrossel = v => v >= pratos[0] - 1 && v <= pratos[pratos.length - 1] + 1;
+  const encaixesV = toque ? encaixes.filter(p => !pratos.slice(1).includes(p)) : encaixes;
+  const ultV = encaixesV.length - 1;
+  const baseV = v => noCarrossel(v) ? encaixesV.indexOf(pratos[0]) : encaixesV.reduce((m, p, i) => Math.abs(p - v) < Math.abs(encaixesV[m] - v) ? i : m, 0);
   const ancoras = encaixes.map(p => { const a = document.createElement('span'); a.className = 'ancora'; a.dataset.vh = p; filme.appendChild(a); return a; });
   function mede() {
     filme.style.height = ((total + 100) * U / 100) + 'px';
@@ -1023,38 +1033,46 @@ html.encaixe { scroll-snap-type: y mandatory; }
   // celular: o próprio gesto conduz. Arrastar pouco só puxa a cena (com resistência) e ela volta;
   // arrastar decidido (12% da tela ou um gesto rápido) leva à próxima parada pela curva.
   // Na última parada, puxar para cima libera o scroll normal até o rodapé.
-  let controlando = false, y0 = 0, t0g = 0, base = 0, dyG = 0, decidido = false, rastro = [];
+  let controlando = false, y0 = 0, x0 = 0, t0g = 0, base = 0, dyG = 0, dxG = 0, eixo = null, decidido = false, rastro = [];
   const ultimo_ = () => encaixes.length - 1;
   const maisPerto = v => encaixes.reduce((m, p, i) => Math.abs(p - v) < Math.abs(encaixes[m] - v) ? i : m, 0);
   if (toque) {
     addEventListener('touchstart', e => {
       if (e.touches.length > 1 || document.body.classList.contains('menu-aberto') || scrollY > topoDe(encaixes[ultimo_()]) + 4) { controlando = false; return; }
-      controlando = true; decidido = false; y0 = e.touches[0].clientY; t0g = performance.now(); dyG = 0; rastro = [[t0g, y0]];
-      base = maisPerto(curva ? curva.x1 : posVh());
+      controlando = true; decidido = false; eixo = null; y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; t0g = performance.now(); dyG = 0; dxG = 0; rastro = [[t0g, y0]];
+      base = baseV(curva ? curva.x1 : posVh());
     }, { passive: true });
     addEventListener('touchmove', e => {
       if (!controlando) return;
       dyG = y0 - e.touches[0].clientY;   // positivo: avançar
+      dxG = x0 - e.touches[0].clientX;   // positivo: próximo prato
+      if (!eixo && (Math.abs(dxG) > 8 || Math.abs(dyG) > 8)) eixo = (Math.abs(dxG) > Math.abs(dyG) && noCarrossel(curva ? curva.x1 : posVh())) ? 'x' : 'y';
+      if (eixo === 'x') { e.preventDefault(); return; }
       rastro.push([performance.now(), e.touches[0].clientY]); if (rastro.length > 6) rastro.shift();
-      if (!decidido && Math.abs(dyG) > 6) { decidido = true; if (base === ultimo_() && dyG > 0) { controlando = false; return; } }
+      if (!decidido && Math.abs(dyG) > 6) { decidido = true; if (base === ultV && dyG > 0) { controlando = false; return; } }
       e.preventDefault();
       // prévia com resistência: a cena acompanha o dedo a 22%, sem sair da parada
-      curva = null; alvo = clamp(encaixes[base] + dyG / U * 100 * .22, 0, total); if (!raf) raf = requestAnimationFrame(quadro);
+      curva = null; alvo = clamp(encaixesV[base] + dyG / U * 100 * .22, 0, total); if (!raf) raf = requestAnimationFrame(quadro);
     }, { passive: false });
     addEventListener('touchend', () => {
       if (!controlando) { clearTimeout(aoSoltar.t); aoSoltar.t = setTimeout(aoSoltar, 220); return; }
       controlando = false;
+      if (eixo === 'x') {   // pratos: deslizar para a esquerda mostra o próximo, para a direita o anterior
+        const v = curva ? curva.x1 : posVh(), atual = pratos.reduce((m, p, i) => Math.abs(p - v) < Math.abs(pratos[m] - v) ? i : m, 0);
+        const novoP = clamp(atual + (dxG > 40 ? 1 : dxG < -40 ? -1 : 0), 0, pratos.length - 1);
+        scrollTo(0, topoDe(pratos[novoP])); andarAte(pratos[novoP]); return;
+      }
       // velocidade no fim do gesto (últimos ~100 ms): um peteleco rápido também avança
       const ag = performance.now(), r = rastro.filter(x => ag - x[0] < 140), a0 = r[0] || rastro[0], a1 = rastro[rastro.length - 1];
       const v = a0 && a1 && a1[0] > a0[0] ? (a0[1] - a1[1]) / (a1[0] - a0[0]) : 0;   // px/ms, positivo: avançar
       const passo = (dyG > U * .12 || (v > .3 && dyG > 24)) ? 1 : (dyG < -U * .12 || (v < -.3 && dyG < -24)) ? -1 : 0;
-      const novo = clamp(base + passo, 0, ultimo_());
-      scrollTo(0, topoDe(encaixes[novo])); andarAte(encaixes[novo]);
+      const novo = clamp(base + passo, 0, ultV);
+      scrollTo(0, topoDe(encaixesV[novo])); andarAte(encaixesV[novo]);
     }, { passive: true });
     // voltando do rodapé com o scroll normal: ao parar dentro do filme, assenta na parada mais próxima
     function aoSoltar() { const v = posVh(); if (v > 0 && v < encaixes[ultimo_()] - 1 && !curva) { const p = encaixes[maisPerto(v)]; scrollTo(0, topoDe(p)); andarAte(p); } }
   }
-  const proxima = dir => { const v = posVh(); return dir > 0 ? encaixes.find(p => p > v + 2) : [...encaixes].reverse().find(p => p < v - 2) ?? 0; };
+  const proxima = dir => { const v = posVh(); return dir > 0 ? encaixesV.find(p => p > v + 2) : [...encaixesV].reverse().find(p => p < v - 2) ?? 0; };
   seguinte.addEventListener('click', () => { const p = proxima(1); if (p !== undefined) viajar(p); });
   anterior.addEventListener('click', () => viajar(proxima(-1)));
   addEventListener('keydown', e => {
